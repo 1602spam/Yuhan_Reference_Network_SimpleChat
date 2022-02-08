@@ -1,2 +1,4 @@
 ﻿  sockettest.cpp
-  sockettest.vcxproj -> D:\socket\sockettest\Debug\sockettest.exe
+C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(214,23): warning C4018: '<': signed 또는 unsigned가 일치하지 않습니다.
+C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(223,38): warning C4018: '<': signed 또는 unsigned가 일치하지 않습니다.
+  sockettest.vcxproj -> C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\Debug\sockettest.exe

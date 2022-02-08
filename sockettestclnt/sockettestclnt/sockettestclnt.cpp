@@ -141,20 +141,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         CreateWindow(L"edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | WS_VSCROLL, 500, 600, 500, 20, hWnd, (HMENU)ID_EDIT, hInst, NULL);
         break;
+    
     case WM_LBUTTONDOWN:
     {
         
     }
         break;
+    
     case WM_RBUTTONDOWN:
     {
         
     }
         break;
+
     case WM_USER+1:
     {
-        
-
         if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
         {
             MessageBox(hWnd, L"winsock error!", L"에러", NULL);
@@ -205,7 +206,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         }
                     }
                     break;
-                }
+            }
+
             switch (wmId)
             {
             case IDM_ABOUT:
@@ -219,6 +221,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -228,9 +231,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             EndPaint(hWnd, &ps);
         }
         break;
+
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
+
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }

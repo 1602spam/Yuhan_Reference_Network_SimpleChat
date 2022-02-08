@@ -3,9 +3,13 @@
 
 #include "framework.h"
 #include "sockettest.h"
-#include <WinSock2.h>
+#include <WinSock2.h>                           //window 환경에서 소켓 프로그래밍 관련 기능을 제공
+#include <io.h>                                 //fd close를 위해 포함
 
-#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "ws2_32.lib")              
+
+#define SC_WIDTH 1425                        //클라이언트 영역 넓이를 나타냅니다.
+#define SC_HEIGHT 751                        //클라이언트 영역 높이를 나타냅니다.
 
 #define MAX 512
 #define MAX_LOADSTRING 100
@@ -13,6 +17,7 @@
 #define IDM_BTN_ServCLOSE 102
 
 #define TIMER_ID_RECVMS 1
+
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
@@ -128,34 +133,38 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY  - 종료 메시지를 게시하고 반환합니다.
 //
 //
-WSADATA wsaData;
-SOCKET hServSock, hClntSock;
-SOCKADDR_IN servAddr, clntAddr;
 
-bool flag=false;
+WSADATA wsaData;
+SOCKET hServSock, hClntSock[MAX];
+SOCKADDR_IN servAddr, clntAddr[MAX];
+bool servRunning = false;
+fd_set set, cpset;
+int fd_max, fd_num, str_len;
+
 
 WCHAR buf[MAX] = {};
 
-DWORD WINAPI createSock(LPVOID Param)
+DWORD WINAPI runServ(LPVOID Param)
 {
     HWND hWnd;
     hWnd = (HWND)Param;
     int portNumber = 10000;
-
-    
-
     int szClntAddr;
+    int i;
+    timeval timeout;
 
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
     {
         MessageBox(hWnd, L"winsock error!", L"에러", NULL);
     }
+
     hServSock = socket(PF_INET, SOCK_STREAM, 0);
     if (hServSock == INVALID_SOCKET)
     {
         MessageBox(hWnd, L"socket() error!", L"에러", NULL);
         WSACleanup();
     }
+
     MessageBox(hWnd, L"socket succeed..", L"성공", NULL);
 
     memset(&servAddr, 0x00, sizeof(servAddr));
@@ -172,33 +181,80 @@ DWORD WINAPI createSock(LPVOID Param)
 
     listen(hServSock, 10);
  
-    szClntAddr = sizeof(clntAddr);
-
+    FD_ZERO(&set);
+    FD_SET(hServSock, &set);
+      
+    /*
     hClntSock = accept(hServSock, (SOCKADDR*)&clntAddr, &szClntAddr);
 
-    if (hClntSock == INVALID_SOCKET || hClntSock == SOCKET_ERROR)
+    if ( servRunning == true && (hClntSock == INVALID_SOCKET || hClntSock == SOCKET_ERROR))
     {
         MessageBox(hWnd, L"accept() error", L"에러", NULL);
         closesocket(hServSock);
         WSACleanup();
     }
-    while(true)
+    */
+
+    while(1)
     {
-        SendMessage(hWnd, WM_USER + 1, 0, 0);
-        Sleep(2000);
-        if (flag == false)
+        if (servRunning == false)
+            break;
+
+        cpset = set;
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 5000;
+
+        fd_num = select(set.fd_count, &cpset, 0, 0, &timeout);
+        
+        if (fd_num == -1) 
+            break;
+        else if (fd_num == 0)
+            continue;
+
+        for (i = 0; i < set.fd_count; i++) 
         {
-            closesocket(hServSock);
-            WSACleanup();
-            ExitThread(0);
+            if (FD_ISSET(set.fd_array[i], &cpset))  //배열 내 소켓에서 변화 감지
+            {
+                if (set.fd_array[i] == hServSock)   //해당 소켓이 서버 소켓이라면 연결
+                {
+                    szClntAddr = sizeof(clntAddr);
+                    hClntSock[i] = accept(hServSock, (SOCKADDR*)&clntAddr, &szClntAddr);
+                    FD_SET(hClntSock[i], &set);
+                    if (set.fd_count < i)
+                        set.fd_count = i;
+                    wsprintf(buf, L"Connected Client: %d", hClntSock[i]);
+                    MessageBox(hWnd, buf, L"성공", NULL);
+                }
+                else
+                {   /*
+                    //해당 부분 정상 작동 안함
+                    str_len = _read(i, buf, MAX);
+                    if (str_len == 0)
+                    {
+                        FD_CLR(set.fd_array[i], &set);
+                        _close(set.fd_array[i]);
+                        wsprintf(buf, L"Disconnected Client: %d", set.fd_array[i]);
+                        MessageBox(hWnd, buf, L"접속 종료", NULL);
+                    }
+                    else
+                    */
+                    {
+                        recv(set.fd_array[i], (char*)buf, MAX, 0);
+                        MessageBox(hWnd, buf, buf, NULL);
+                    }
+                }
+            }
         }
     }
-    //SetTimer(hWnd, TIMER_ID_RECVMS, 100, NULL);
+
     closesocket(hServSock);
     WSACleanup();
     ExitThread(0);
     return 0;
 }
+
+
+
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -206,8 +262,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
     {
-        CreateWindow(L"button", L"Server Start", WS_CHILD | WS_VISIBLE, 500, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServSTART, hInst, NULL);
-        CreateWindow(L"button", L"Server Close", WS_CHILD | WS_VISIBLE, 850, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServCLOSE, hInst, NULL);
+        CreateWindow(L"button", L"Launch Server", WS_CHILD | WS_VISIBLE, 500, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServSTART, hInst, NULL);
+        CreateWindow(L"button", L"Terminate Server", WS_CHILD | WS_VISIBLE, 850, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServCLOSE, hInst, NULL);
     }
         break;
 
@@ -218,28 +274,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             switch (wmId)
             {
             case IDM_BTN_ServSTART:
-                if (flag != true)
+                if (servRunning == false)
                 {
-                    CreateThread(NULL, 0, createSock, (LPVOID)hWnd, 0, NULL);
-                    
-                    flag = true;
+                    CreateThread(NULL, 0, runServ, (LPVOID)hWnd, 0, NULL);
+                    servRunning = true;
                 }
                 break;
+
             case IDM_BTN_ServCLOSE:
-                if (flag == true)
+                if (servRunning == true)
                 {
-                    WSACleanup();
+                    servRunning = false;
+                    //WSACleanup();
                     closesocket(hServSock);
-                    MessageBox(hWnd, L"서버 종료", L"서버종료", NULL);
-                    flag = false;
+                    MessageBox(hWnd, L"Server terminated.", L"서버 종료", NULL);
                 }
                 break;
+
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
+
             case IDM_EXIT:
                 DestroyWindow(hWnd);
                 break;
+
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
@@ -248,30 +307,37 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_TIMER:
     {
+    /*
         switch (wParam)
         {
         case TIMER_ID_RECVMS:
         {
             
             break;
-        }
-        }
+        }}
+    */
     }
         break;
+
     case WM_LBUTTONDOWN:
     {
 
     }
     break;
+
     case WM_RBUTTONDOWN:
     {
 
     }
         break;
+        /*
     case WM_USER+1:
-        if (flag == true && recv(hClntSock, (char*)buf, MAX, 0))
-            MessageBox(hWnd, buf, buf, NULL);
-        break;
+    {
+        if (servRunning == true && recv(hClntSock, (char*)buf, MAX, 0))
+        MessageBox(hWnd, buf, buf, NULL);
+    }   
+    break;
+    */
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -280,9 +346,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             EndPaint(hWnd, &ps);
         }
         break;
+
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
+
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }

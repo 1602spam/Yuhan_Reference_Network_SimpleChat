@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "ProjectMap": {
+    "16cf5b41-0c49-49d9-8f49-ac1858ec9f79": {
+      "ProjectGuid": "16cf5b41-0c49-49d9-8f49-ac1858ec9f79",
+      "DisplayName": "sockettest",
+      "ColorIndex": 0
+    }
+  },
+  "NextColorIndex": 1
+}
