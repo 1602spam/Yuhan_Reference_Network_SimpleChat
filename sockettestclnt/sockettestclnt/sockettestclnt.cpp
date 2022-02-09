@@ -181,7 +181,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             WSACleanup();
             closesocket(hSocket);
             TerminateProcess(GetCurrentProcess(), 0);
-        }else
+        } else
         {
             //MessageBox(hWnd, L"connect succeed..", L"성공", NULL);
         }

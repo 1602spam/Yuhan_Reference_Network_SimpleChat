@@ -154,7 +154,8 @@ DWORD WINAPI runServ(LPVOID Param)
     int szClntAddr;
     int i, j = 0;
     timeval timeout;
-
+    HDC hdc = GetDC(hWnd);
+    SetBkMode(hdc, TRANSPARENT);
     InvalidateRect(hWnd, NULL, 1);
 
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
@@ -169,7 +170,9 @@ DWORD WINAPI runServ(LPVOID Param)
         WSACleanup();
     }
 
-    //MessageBox(hWnd, L"socket succeed..", L"성공", NULL);
+    TextOut(hdc, 10, 10 + j, L"Successfully created socket.", lstrlenW(L"Successfully created socket."));
+    j += 20;
+    InvalidateRect(hWnd, NULL, 0);
 
     memset(&servAddr, 0x00, sizeof(servAddr));
     servAddr.sin_family = AF_INET;
@@ -182,16 +185,22 @@ DWORD WINAPI runServ(LPVOID Param)
         closesocket(hServSock);
         WSACleanup();
     }
+    else {
+        TextOut(hdc, 10, 10 + j, L"Bind succeed.", lstrlenW(L"Bind succeed."));
+        j += 20;
+        InvalidateRect(hWnd, NULL, 0);
+    }
 
     listen(hServSock, 10);
- 
+    
+    TextOut(hdc, 10, 10 + j, L"Listening...", lstrlenW(L"Listening..."));
+    j += 20;
+    InvalidateRect(hWnd, NULL, 0);
+
     FD_ZERO(&set);
     FD_SET(hServSock, &set);
 
-    HDC hdc = GetDC(hWnd);
-    SetBkMode(hdc, TRANSPARENT);
-
-    TextOut(hdc, 10, 10 + j, L"Server Launched", lstrlenW(L"Server Launched"));
+    TextOut(hdc, 10, 10 + j, L"Server is running...", lstrlenW(L"Server is running..."));
     j += 20;
     InvalidateRect(hWnd, NULL, 0);
 
@@ -255,7 +264,7 @@ DWORD WINAPI runServ(LPVOID Param)
             }
         }
     }
-    TextOut(hdc, 10, 10 + j, L"Server Terminated", lstrlenW(L"Server Terminated"));
+    TextOut(hdc, 10, 10 + j, L"Server Terminated.", lstrlenW(L"Server Terminated."));
     j += 20;
     InvalidateRect(hWnd, NULL, 0);
     ReleaseDC(hWnd, hdc);
