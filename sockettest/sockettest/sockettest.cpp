@@ -4,7 +4,6 @@
 #include "framework.h"
 #include "sockettest.h"
 #include <WinSock2.h>                           //window 환경에서 소켓 프로그래밍 관련 기능을 제공
-#include <io.h>                                 //fd close를 위해 포함
 
 #pragma comment(lib, "ws2_32.lib")            
 
@@ -244,9 +243,9 @@ DWORD WINAPI runServ(LPVOID Param)
 
                     if (chk_conn <= 0)
                     {
+                        wsprintf(buf, L"Disconnected Client: %d", set.fd_array[i]);
                         closesocket(set.fd_array[i]);
                         FD_CLR(set.fd_array[i], &set);
-                        wsprintf(buf, L"Disconnected Client: %d", set.fd_array[i]);
                         TextOut(hdc, 10, 10 + j, buf, lstrlenW(buf));
                         j += 20;
                         InvalidateRect(hWnd, NULL, 0);

@@ -1,6 +1,6 @@
 ﻿  sockettest.cpp
-C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(11,30): warning C4081: 'newline'이(가) 있어야 하는데 ';'이(가) 있습니다.
-C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(223,23): warning C4018: '<': signed 또는 unsigned가 일치하지 않습니다.
-C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(232,38): warning C4018: '<': signed 또는 unsigned가 일치하지 않습니다.
-C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(366,17): warning C4101: 'i' :참조되지 않은 지역 변수입니다.
+C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(10,30): warning C4081: 'newline'이(가) 있어야 하는데 ';'이(가) 있습니다.
+C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(222,23): warning C4018: '<': signed 또는 unsigned가 일치하지 않습니다.
+C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(231,38): warning C4018: '<': signed 또는 unsigned가 일치하지 않습니다.
+C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\sockettest\sockettest.cpp(365,17): warning C4101: 'i' :참조되지 않은 지역 변수입니다.
   sockettest.vcxproj -> C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettest\Debug\sockettest.exe
