@@ -10,7 +10,6 @@ SOCKET hClntSock[MAX];
 // 소켓 디스크립터 값을 저장하기위한 구조체 변수, 클라이언트의 주소값을 저장하기 위한 구조체 변수
 SOCKADDR_IN servAddr, clntAddr[MAX];
 
-
 fd_set set, cpset;
 
 int fd_max, fd_num, chk_conn;
@@ -27,6 +26,11 @@ WCHAR buf2[MAX] = {};
 * @bug
 * @warning
 */
+
+void WSAStartup_error(HWND hWnd, int code);
+void bind_error(HWND hWnd, int code);
+void app_print(HDC hdc, const wchar_t* str);
+
 DWORD WINAPI runServ(LPVOID Param)
 {
 	// 인자인 Param 값을 hWnd 값으로 변경
@@ -114,69 +118,96 @@ DWORD WINAPI runServ(LPVOID Param)
 	app_print(hdc, L"Listening...");
 	InvalidateRect(hWnd, NULL, 0);
 
-	// 몰?루
+	// file descriptor는 소켓이 들어가는 배열 구조체
+	// FD_ZERO로 fd_set을 초기화, FD_SET으로 fd_set에 서버 소켓을 넣음
 	FD_ZERO(&set);
 	FD_SET(hServSock, &set);
 
 	app_print(hdc, L"Server is running...");
 	InvalidateRect(hWnd, NULL, 0);
 
-	// 네트워크의 입력을 받음
 	// 무한 반복 구문
 	while (1)
 	{
+		//서버 실행 중이 아니면 while문 탈출, 서버와 스레드 종료
 		if (servRunning == false)
 			break;
 
+		//select문을 쓰면 fd_set 원형이 훼손되기 때문에 기존 set를 복사해서 사용
 		cpset = set;
+		//타임아웃 구조체 멤버 설정(초, 밀리초)
 		timeout.tv_sec = 5;
 		timeout.tv_usec = 5000;
 
+		//select문은 file descriptor의 변경을 감지, 현재는 fd_set에 서버 소켓 하나만 있는 상태
+		//인수는 차례로 (개수, 입력 감지할 세트, 출력 감지할 세트, 오류 감지할 세트, 타임아웃)
 		fd_num = select(set.fd_count, &cpset, 0, 0, &timeout);
 
+		//오류 발생 시 while문 탈출, 서버와 스레드 종료
 		if (fd_num == -1)
 			break;
+		//변화값이 없을 경우 처리하지 않고 반복
 		else if (fd_num == 0)
 			continue;
 
+		//set의 file descriptor 개수만큼 반복
 		for (i = 0; i < set.fd_count; i++)
 		{
-			if (FD_ISSET(set.fd_array[i], &cpset))  //배열 내 소켓에서 변화 감지
+			//어느 소켓에서 변화가 발생했는지 판단
+			if (FD_ISSET(set.fd_array[i], &cpset))
 			{
-				if (set.fd_array[i] == hServSock)   //해당 소켓이 서버 소켓이라면 연결
+				//해당 소켓이 서버 소켓이라면 신규 연결 신호가 온 것
+				if (set.fd_array[i] == hServSock)
 				{
+					//클라이언트 주소 크기를 구하고 accept, 연결된 소켓은 클라이언트 소켓 배열에 할당
 					szClntAddr = sizeof(clntAddr);
 					hClntSock[i] = accept(hServSock, (SOCKADDR*)&clntAddr, &szClntAddr);
 
+					//해당 소켓을 fd_set에 할당하고 fd_count보다 작다면 i로 설정
 					FD_SET(hClntSock[i], &set);
 					if (set.fd_count < i)
 						set.fd_count = i;
 
-					wsprintf(buf, L"Connected Client: %d", hClntSock[i]);
+					//연결에 성공했다면 연결 성공 메시지 출력
 					if (hClntSock[i] != -1) {
+						wsprintf(buf, L"Connected Client: %d", hClntSock[i]);
 						app_print(hdc, buf);
 					}
+
+					//app_print도 hdc, GetDC, ReleaseDC, InvalidateRect 쓰나요?
 					InvalidateRect(hWnd, NULL, 0);
 				}
+				//해당 소켓이 서버 소켓이 아닌 경우
 				else
 				{
+					//연결 확인을 위한 recv 함수 반환
 					chk_conn = recv(set.fd_array[i], (char*)buf, MAX, 0);
-
+					//리턴 값이 0이면 정상 종료, 1이면 비정상 종료임을 나타냄
 					if (chk_conn <= 0)
 					{
+						//접속 종료 메시지 설정
 						wsprintf(buf, L"Disconnected Client: %d", set.fd_array[i]);
+						
+						//해당 소켓을 set에서 찾아 종료
 						closesocket(set.fd_array[i]);
+						//종료된 소켓이 있던 fd_set 내 배열 원소를 0으로 초기화
 						FD_CLR(set.fd_array[i], &set);
+						
+						//접속 종료 메시지 출력
 						app_print(hdc, buf);
 						InvalidateRect(hWnd, NULL, 0);
 					}
+					//recv 함수가 정상 작동한 경우(반환값 1인 경우)
 					else
 					{
+						//buf2에는 해당 소켓 번호를 저장
 						wsprintf(buf2, L"%d         : ", set.fd_array[i]);
+						//buf2 뒤에 recv한 메시지가 저장되어 있는 buf를 붙임
 						wcscat(buf2, buf);
+						//buf2를 출력
+						//846		: hello 와 같은 형태로 출력
 						app_print(hdc, buf2);
 						InvalidateRect(hWnd, NULL, 0);
-						//모든 클라이언트에 재전송
 					}
 				}
 			}
