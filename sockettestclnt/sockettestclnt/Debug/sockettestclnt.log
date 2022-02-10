@@ -1,3 +1,0 @@
-﻿  sockettestclnt.cpp
-C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettestclnt\sockettestclnt\sockettestclnt.cpp(175,36): warning C4996: 'inet_addr': Use inet_pton() or InetPton() instead or define _WINSOCK_DEPRECATED_NO_WARNINGS to disable deprecated API warnings
-  sockettestclnt.vcxproj -> C:\Users\jjh02\OneDrive\바탕 화면\Work\UNIV\ref_network\YuhanChat\sockettestclnt\Debug\sockettestclnt.exe
