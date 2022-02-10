@@ -145,6 +145,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="runServ.cpp" />
     <ClCompile Include="sockettest.cpp" />
   </ItemGroup>
   <ItemGroup>

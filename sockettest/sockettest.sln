@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.31729.503
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sockettest", "sockettest\sockettest.vcxproj", "{16CF5B41-0C49-49D9-8F49-AC1858EC9F79}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sockettestclnt", "..\sockettestclnt\sockettestclnt\sockettestclnt.vcxproj", "{08F83194-E606-4FCB-A155-0865F3A8F7F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{16CF5B41-0C49-49D9-8F49-AC1858EC9F79}.Release|x64.Build.0 = Release|x64
 		{16CF5B41-0C49-49D9-8F49-AC1858EC9F79}.Release|x86.ActiveCfg = Release|Win32
 		{16CF5B41-0C49-49D9-8F49-AC1858EC9F79}.Release|x86.Build.0 = Release|Win32
+		{08F83194-E606-4FCB-A155-0865F3A8F7F9}.Debug|x64.ActiveCfg = Debug|x64
+		{08F83194-E606-4FCB-A155-0865F3A8F7F9}.Debug|x64.Build.0 = Debug|x64
+		{08F83194-E606-4FCB-A155-0865F3A8F7F9}.Debug|x86.ActiveCfg = Debug|Win32
+		{08F83194-E606-4FCB-A155-0865F3A8F7F9}.Debug|x86.Build.0 = Debug|Win32
+		{08F83194-E606-4FCB-A155-0865F3A8F7F9}.Release|x64.ActiveCfg = Release|x64
+		{08F83194-E606-4FCB-A155-0865F3A8F7F9}.Release|x64.Build.0 = Release|x64
+		{08F83194-E606-4FCB-A155-0865F3A8F7F9}.Release|x86.ActiveCfg = Release|Win32
+		{08F83194-E606-4FCB-A155-0865F3A8F7F9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
