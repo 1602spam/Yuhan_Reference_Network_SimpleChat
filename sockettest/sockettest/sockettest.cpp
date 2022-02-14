@@ -1,15 +1,10 @@
 ﻿// sockettest.cpp : 애플리케이션에 대한 진입점을 정의합니다.
 //
-
 #include "framework.h"
 #include "sockettest.h"
 
-
-
 #define SC_WIDTH 1425						// 윈도우 창의 넓이를 나타냅니다.
 #define SC_HEIGHT 751						// 윈도우 창의 높이를 나타냅니다.
-
-
 
 #define TIMER_ID_RECVMS 1
 
@@ -17,6 +12,9 @@
 HINSTANCE hInst;							// 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];				// 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];		// 기본 창 클래스 이름입니다.
+
+extern bool servRunning;					// 서버 실행 여부를 나타냅니다.
+extern SOCKET hServSock;					// 서버 소켓 구조체
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -154,11 +152,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			switch (wmId)
 			{
 			case IDM_BTN_ServSTART:
-				// 서버 실행 버튼을 눌렀을 때
-				// 서버가 실행중이 아니라면
+				// 서버 실행 버튼을 눌렀을 때 서버가 실행 중이 아니라면
 				if (servRunning == false)
 				{
-					// renServ 스레드를 생성한다.
+					// runServ 스레드를 생성한다.
 					CreateThread(NULL, 0, runServ, (LPVOID)hWnd, 0, NULL);
 
 					// 서버 실행 상태를 true 로 만든다.
@@ -169,18 +166,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			case IDM_BTN_ServCLOSE:
 				if (servRunning == true)
 				{
-					//WSACleanup();
-					// 만약 소켓 핸들이 NULL이 아니라면
-					if (!hServSock)
+					WSACleanup(); //스레드 종료 시 WSACleanup을 실행하긴 하나 여기서 실행시켜 주지 않으면 bind 오류가 발생해서 필요해요
+					if (!hServSock) // 만약 소켓 핸들이 NULL이 아니라면
 					{
 						// 소켓을 닫아준다.
 						closesocket(hServSock);
 						hServSock = NULL;
 					}
-					/// 이거 변수 먼저 바꾸면 버그 날 수 있어서 소켓 먼저 닫고 변수를 바꿔줄게
 					// 서버 실행 상태를 false로 만든다.
 					servRunning = false;
-					MessageBox(hWnd, L"Server terminated.", L"서버 종료", NULL);
+					//MessageBox(hWnd, L"Server terminated.", L"서버 종료", NULL);
 				}
 				break;
 

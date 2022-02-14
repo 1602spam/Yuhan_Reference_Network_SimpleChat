@@ -145,7 +145,10 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="sockettestclnt.cpp" />
+    <ClCompile Include="sockettestclnt.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="connServ.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="sockettestclnt.rc" />

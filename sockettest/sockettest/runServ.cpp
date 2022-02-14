@@ -1,21 +1,25 @@
-#include"framework.h"
-#include"sockettest.h"
+#include "framework.h"
+#include "sockettest.h"
 
-// 통신으로부터 값을 읽어오기 위한 구조체 변수
+// 윈도우 소켓 시스템을 사용하기 위한 initialize를 할 때 쓰입니다.
 WSADATA wsaData;
-
-// 소켓 정보를 저장하기 위한 구조체 변수, 클라이언트에 대한 소켓 정보를 저장하기 위한 구조체 변수
+// 클라이언트 소켓
 SOCKET hClntSock[MAX];
-
-// 소켓 디스크립터 값을 저장하기위한 구조체 변수, 클라이언트의 주소값을 저장하기 위한 구조체 변수
+// 소켓 디스크립터 값을 저장하기 위한 구조체 변수, 클라이언트의 주소값을 저장하기 위한 구조체 변수
 SOCKADDR_IN servAddr, clntAddr[MAX];
-
 fd_set set, cpset;
-
-int fd_max, fd_num, chk_conn;
-
+int fd_num, chk_conn;
 WCHAR buf[MAX] = {};
 WCHAR buf2[MAX] = {};
+
+bool servRunning;			// 서버 실행 여부를 나타냅니다.
+SOCKET hServSock;				// 서버 소켓 구조체
+
+void app_print(HWND hWnd, HDC hdc, const wchar_t* str);
+int t_y;
+
+void WSAStartup_error(HWND hWnd, int code);
+void bind_error(HWND hWnd, int code);
 
 /*!
 * @breif		서버의 동작시에 실행되는 스레드
@@ -27,9 +31,6 @@ WCHAR buf2[MAX] = {};
 * @warning
 */
 
-void WSAStartup_error(HWND hWnd, int code);
-void bind_error(HWND hWnd, int code);
-void app_print(HDC hdc, const wchar_t* str);
 
 DWORD WINAPI runServ(LPVOID Param)
 {
@@ -37,8 +38,9 @@ DWORD WINAPI runServ(LPVOID Param)
 	HWND hWnd = (HWND)Param;
 	int portNumber = 10000;
 	int szClntAddr;
-	int i = 0;
 	timeval timeout;
+	int i, j;
+	t_y = 0;
 
 	// DC 를 할당
 	HDC hdc = GetDC(hWnd);
@@ -79,9 +81,7 @@ DWORD WINAPI runServ(LPVOID Param)
 	}
 
 	// 통신이 준비되었음을 알리는 코드
-	app_print(hdc, L"Successfully created socket.");
-	
-	InvalidateRect(hWnd, NULL, 0);
+	app_print(hWnd, hdc, L"Successfully created socket.");
 
 	// servAddr 구조체의 메모리 초기화
 	memset(&servAddr, 0x00, sizeof(servAddr));
@@ -107,24 +107,25 @@ DWORD WINAPI runServ(LPVOID Param)
 	}
 	else {
 		// 성공 메시지 출력
-		app_print(hdc, L"Bind succed");
-		InvalidateRect(hWnd, NULL, 0);
+		app_print(hWnd, hdc, L"Bind succeed.");
 	}
 
 	// 네트워크 입력을 받음
 	// 사용자가 들어올 때 까지 대기
 	listen(hServSock, 10);
 
-	app_print(hdc, L"Listening...");
-	InvalidateRect(hWnd, NULL, 0);
+	app_print(hWnd, hdc, L"Listening...");
 
 	// file descriptor는 소켓이 들어가는 배열 구조체
 	// FD_ZERO로 fd_set을 초기화, FD_SET으로 fd_set에 서버 소켓을 넣음
 	FD_ZERO(&set);
 	FD_SET(hServSock, &set);
 
-	app_print(hdc, L"Server is running...");
-	InvalidateRect(hWnd, NULL, 0);
+	app_print(hWnd, hdc, L"Server is running...");
+	
+	//타임아웃 구조체 멤버 설정(초, 밀리초)
+	timeout.tv_sec = 5;
+	timeout.tv_usec = 5000;
 
 	// 무한 반복 구문
 	while (1)
@@ -135,10 +136,7 @@ DWORD WINAPI runServ(LPVOID Param)
 
 		//select문을 쓰면 fd_set 원형이 훼손되기 때문에 기존 set를 복사해서 사용
 		cpset = set;
-		//타임아웃 구조체 멤버 설정(초, 밀리초)
-		timeout.tv_sec = 5;
-		timeout.tv_usec = 5000;
-
+		
 		//select문은 file descriptor의 변경을 감지, 현재는 fd_set에 서버 소켓 하나만 있는 상태
 		//인수는 차례로 (개수, 입력 감지할 세트, 출력 감지할 세트, 오류 감지할 세트, 타임아웃)
 		fd_num = select(set.fd_count, &cpset, 0, 0, &timeout);
@@ -171,11 +169,10 @@ DWORD WINAPI runServ(LPVOID Param)
 					//연결에 성공했다면 연결 성공 메시지 출력
 					if (hClntSock[i] != -1) {
 						wsprintf(buf, L"Connected Client: %d", hClntSock[i]);
-						app_print(hdc, buf);
+						app_print(hWnd, hdc, buf);
+						for (j = 0; j < set.fd_count; j++)
+							send(set.fd_array[j], (char*)buf, MAX, 0);
 					}
-
-					//app_print도 hdc, GetDC, ReleaseDC, InvalidateRect 쓰나요?
-					InvalidateRect(hWnd, NULL, 0);
 				}
 				//해당 소켓이 서버 소켓이 아닌 경우
 				else
@@ -194,8 +191,9 @@ DWORD WINAPI runServ(LPVOID Param)
 						FD_CLR(set.fd_array[i], &set);
 						
 						//접속 종료 메시지 출력
-						app_print(hdc, buf);
-						InvalidateRect(hWnd, NULL, 0);
+						app_print(hWnd, hdc, buf);
+						for (j = 0; j < set.fd_count; j++)
+							send(set.fd_array[j], (char*)buf, MAX, 0);
 					}
 					//recv 함수가 정상 작동한 경우(반환값 1인 경우)
 					else
@@ -206,8 +204,9 @@ DWORD WINAPI runServ(LPVOID Param)
 						wcscat(buf2, buf);
 						//buf2를 출력
 						//846		: hello 와 같은 형태로 출력
-						app_print(hdc, buf2);
-						InvalidateRect(hWnd, NULL, 0);
+						app_print(hWnd, hdc, buf2);
+						for (j = 0; j < set.fd_count; j++)
+							send(set.fd_array[j], (char*)buf2, MAX, 0);
 					}
 				}
 			}
@@ -215,8 +214,7 @@ DWORD WINAPI runServ(LPVOID Param)
 	}
 
 	// 서버 종료
-	app_print(hdc, L"Server Terminated.");
-	InvalidateRect(hWnd, NULL, 0);
+	app_print(hWnd, hdc, L"Server Terminated.");
 	ReleaseDC(hWnd, hdc);
 
 	// 스레드 종료
@@ -313,16 +311,18 @@ void bind_error(HWND hWnd, int code)
 		break;
 	}
 }
+
 /*!
-* @breif		메시지의 출력 담당하는 메소드
-* @details		메시지를 출력한다.
+* @breif		메시지를 출력합니다.
+* @details		서버 상태와 클라이언트 메시지를 출력합니다.
 * @param		HDC		hdc		윈도우에 대한 핸들값
 * @param		const	WHCAR*	str		출력할 문자열
 * @return		void
 */
-void app_print(HDC hdc, const wchar_t* str)
+
+void app_print(HWND hWnd, HDC hdc, const wchar_t* str)
 {
-	static int i = 10;
-	TextOut(hdc, 10, i, str, lstrlenW(str));
-	i += 20;
+	TextOut(hdc, 10, 10+t_y, str, lstrlenW(str));
+	t_y += 20;
+	InvalidateRect(hWnd, NULL, 0);
 }

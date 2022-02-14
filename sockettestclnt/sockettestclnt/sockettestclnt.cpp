@@ -3,13 +3,6 @@
 
 #include "framework.h"
 #include "sockettestclnt.h"
-#include <WinSock2.h>
-
-#pragma comment(lib, "ws2_32.lib")
-
-#define MAX 512
-#define MAX_LOADSTRING 100
-#define ID_EDIT 101
 
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
@@ -127,20 +120,27 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY  - 종료 메시지를 게시하고 반환합니다.
 //
 //
-WCHAR buf[MAX];
-HANDLE handle;
-WSADATA wsaData;
-SOCKET hSocket;
-SOCKADDR_IN servAddr;
-char IPaddress[] = "127.0.0.1";
-int PortNumber = 10000;
+extern SOCKET hClntSock;
+extern WCHAR buf[MAX];
+extern bool clntConnected;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
     case WM_CREATE:
+    {
         CreateWindow(L"edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | WS_VSCROLL, 500, 600, 500, 20, hWnd, (HMENU)ID_EDIT, hInst, NULL);
+        // 서버를 실행하는 버튼을 생성한다.
+        // 이벤트	IDM_BTN_ServSTART	101
+        CreateWindow(L"button", L"Connect", WS_CHILD | WS_VISIBLE,
+            500, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServConn, hInst, NULL);
+
+        // 서버를 종료하는 버튼을 생성한다.
+        // 이벤트	IDM_BTN_ServCLOSE	102
+        CreateWindow(L"button", L"Disconnect", WS_CHILD | WS_VISIBLE,
+            850, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServDC, hInst, NULL);
+    }
         break;
     
     case WM_LBUTTONDOWN:
@@ -155,70 +155,60 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
         break;
 
-    case WM_USER+1:
-    {
-        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-        {
-            MessageBox(hWnd, L"winsock error!", L"에러", NULL);
-        }
-
-        hSocket = socket(PF_INET, SOCK_STREAM, 0);
-        if (hSocket == INVALID_SOCKET)
-        {
-            MessageBox(hWnd, L"socket() error!", L"에러", NULL);
-            WSACleanup();
-            TerminateProcess(GetCurrentProcess(), 0);
-        }
-        //MessageBox(hWnd, L"socket succeed..", L"성공", NULL);
-
-        memset(&servAddr, 0x00, sizeof(servAddr));
-        servAddr.sin_family = AF_INET;
-        servAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // CnC Server IP address
-        servAddr.sin_port = htons(PortNumber); // CnC Server Port Number
-
-        if (connect(hSocket, (SOCKADDR*)&servAddr, sizeof(servAddr)) == SOCKET_ERROR)
-        {
-            MessageBox(hWnd, L"connect() error!", L"에러", NULL);
-            WSACleanup();
-            closesocket(hSocket);
-            TerminateProcess(GetCurrentProcess(), 0);
-        } else
-        {
-            //MessageBox(hWnd, L"connect succeed..", L"성공", NULL);
-        }
-    }
-        break;
-
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
             // 메뉴 선택을 구문 분석합니다:
-            switch (LOWORD(wParam))
-            {
-                case ID_EDIT:
-                    if (HIWORD(wParam) == EN_UPDATE)
-                    {
-                        int length = GetWindowText((HWND)lParam, buf, sizeof(buf) / sizeof(WCHAR));
-                        if (buf[length - 2] == TEXT('\r'))
-                        {
-                            buf[length - 2] = TEXT('\0');
-                            SetWindowText((HWND)lParam, TEXT(""));
-                            send(hSocket, (char*)buf, MAX, 0);
-                        }
-                    }
-                    break;
-            }
 
             switch (wmId)
             {
+            case IDM_BTN_ServConn:
+                if (clntConnected == false)
+                {
+                    clntConnected = true;   //connServ 처리 과정 상 먼저 열어줘야 함
+                    CreateThread(NULL, 0, connServ, (LPVOID)hWnd, 0, NULL);
+                }
+                break;
+
+            case IDM_BTN_ServDC:
+                {
+                if (clntConnected)
+                {
+                    WSACleanup(); //스레드 종료 시 WSACleanup을 실행하긴 하나 여기서 실행시켜 주지 않으면 bind 오류가 발생해서 필요해요
+                    if (!hClntSock)
+                    {
+                        closesocket(hClntSock);
+                        hClntSock = NULL;
+                    }
+                    clntConnected = false;
+                }
+                }
+                break;
+
+            case ID_EDIT:
+                if (HIWORD(wParam) == EN_UPDATE)
+                {
+                    int length = GetWindowText((HWND)lParam, buf, sizeof(buf) / sizeof(WCHAR));
+                    if (buf[length - 2] == TEXT('\r'))
+                    {
+                        buf[length - 2] = TEXT('\0');
+                        SetWindowText((HWND)lParam, TEXT(""));
+                        if(hClntSock)
+                            send(hClntSock, (char*)buf, MAX, 0);
+                    }
+                }
+                break;
+
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
+
             case IDM_EXIT:
                 WSACleanup();
-                closesocket(hSocket);
+                closesocket(hClntSock);
                 DestroyWindow(hWnd);
                 break;
+
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
@@ -230,7 +220,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
-            SendMessage(hWnd, WM_USER + 1, 0, 0);
             EndPaint(hWnd, &ps);
         }
         break;
