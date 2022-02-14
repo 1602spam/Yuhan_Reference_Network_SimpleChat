@@ -1,10 +1,12 @@
 #include "framework.h"
 #include "sockettestclnt.h"
 
+#define SHOW_DEBUG_LOG_
+
 WCHAR buf[MAX];
 HANDLE handle;
 WSADATA wsaData;
-SOCKET hClntSock, hServSock;
+SOCKET hSocket;
 SOCKADDR_IN servAddr;
 fd_set set, cpset;
 
@@ -30,10 +32,13 @@ DWORD WINAPI connServ(LPVOID Param)
         wsprintf(buf, L"Winsock initialize failed.");
     else
         wsprintf(buf, L"Winsock initialize succeed.");
-    app_print(hWnd, hdc, buf);
     
-    hClntSock = socket(PF_INET, SOCK_STREAM, 0);
-    if (hClntSock == INVALID_SOCKET)
+#ifdef SHOW_DEBUG_LOG
+    app_print(hWnd, hdc, buf);
+#endif
+
+    hSocket = socket(PF_INET, SOCK_STREAM, 0);
+    if (hSocket == INVALID_SOCKET)
     {
         wsprintf(buf, L"Failed to create socket.");
         WSACleanup();
@@ -41,28 +46,37 @@ DWORD WINAPI connServ(LPVOID Param)
     }
     else
         wsprintf(buf, L"Successfully created socket.");
+
+#ifdef SHOW_DEBUG_LOG
     app_print(hWnd, hdc, buf);
+#endif
 
     memset(&servAddr, 0x00, sizeof(servAddr));
     servAddr.sin_family = AF_INET;
     inet_pton(AF_INET, "127.0.0.1", &servAddr.sin_addr.s_addr); // CnC Server IP address
     servAddr.sin_port = htons(PortNumber); // CnC Server Port Number
 
+#ifdef SHOW_DEBUG_LOG
     wsprintf(buf, L"Trying to connect...");
     app_print(hWnd, hdc, buf);
+#endif
 
-    if (connect(hClntSock, (SOCKADDR*)&servAddr, sizeof(servAddr)) == SOCKET_ERROR)
+    if (connect(hSocket, (SOCKADDR*)&servAddr, sizeof(servAddr)) == SOCKET_ERROR)
     {
-        wsprintf(buf, L"Connection failed.");
-        app_print(hWnd, hdc, buf);
+        #ifdef SHOW_DEBUG_LOG
+            wsprintf(buf, L"Connection failed.");
+            app_print(hWnd, hdc, buf);
+        #endif
     }
     else
     {
+    #ifdef SHOW_DEBUG_LOG
         wsprintf(buf, L"Connection Succeed.");
         app_print(hWnd, hdc, buf);
+    #endif
 
         FD_ZERO(&set);
-        FD_SET(hServSock, &set);
+        FD_SET(hSocket, &set);
         
         timeout.tv_sec = 5;
         timeout.tv_usec = 5000;
@@ -81,12 +95,17 @@ DWORD WINAPI connServ(LPVOID Param)
             else if (fd_num == 0)
                 continue;
             
-            if (FD_ISSET(hServSock, &cpset)) {
-                chk_conn = recv(hServSock, (char*)buf, MAX, 0);
+            if (FD_ISSET(hSocket, &cpset)) {
+                chk_conn = recv(hSocket, (char*)buf, MAX, 0);
                 if (chk_conn <= 0)
                 {
-                    wsprintf(buf, L"Server error occurred.");
-                    app_print(hWnd, hdc, buf);
+
+                #ifdef SHOW_DEBUG_LOG
+                    if (clntConnected) {
+                        wsprintf(buf, L"Server error occurred.");
+                        app_print(hWnd, hdc, buf);
+                    }
+                #endif
                     break;
                 }
                 else
@@ -101,7 +120,7 @@ DWORD WINAPI connServ(LPVOID Param)
     ReleaseDC(hWnd, hdc);
 
     // 스레드 종료
-    closesocket(hClntSock);
+    closesocket(hSocket);
     WSACleanup();
     clntConnected = 0;
     ExitThread(0);

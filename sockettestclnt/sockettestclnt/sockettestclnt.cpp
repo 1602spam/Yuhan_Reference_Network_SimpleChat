@@ -9,6 +9,10 @@ HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
 
+extern SOCKET hSocket;
+extern WCHAR buf[MAX];
+extern bool clntConnected;
+
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -120,9 +124,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY  - 종료 메시지를 게시하고 반환합니다.
 //
 //
-extern SOCKET hClntSock;
-extern WCHAR buf[MAX];
-extern bool clntConnected;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -174,13 +175,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 {
                 if (clntConnected)
                 {
-                    WSACleanup(); //스레드 종료 시 WSACleanup을 실행하긴 하나 여기서 실행시켜 주지 않으면 bind 오류가 발생해서 필요해요
-                    if (!hClntSock)
-                    {
-                        closesocket(hClntSock);
-                        hClntSock = NULL;
-                    }
                     clntConnected = false;
+                    WSACleanup(); //스레드 종료 시 WSACleanup을 실행하긴 하나 여기서 실행시켜 주지 않으면 bind 오류가 발생해서 필요해요
+                    if (!hSocket)
+                    {
+                        closesocket(hSocket);
+                        hSocket = NULL;
+                    }
                 }
                 }
                 break;
@@ -193,8 +194,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     {
                         buf[length - 2] = TEXT('\0');
                         SetWindowText((HWND)lParam, TEXT(""));
-                        if(hClntSock)
-                            send(hClntSock, (char*)buf, MAX, 0);
+                        if(hSocket)
+                            send(hSocket, (char*)buf, MAX, 0);
                     }
                 }
                 break;
@@ -205,7 +206,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             case IDM_EXIT:
                 WSACleanup();
-                closesocket(hClntSock);
+                closesocket(hSocket);
                 DestroyWindow(hWnd);
                 break;
 
