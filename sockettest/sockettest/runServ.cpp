@@ -1,25 +1,29 @@
 #include "framework.h"
 #include "sockettest.h"
 
-// 윈도우 소켓 시스템을 사용하기 위한 initialize를 할 때 쓰입니다.
+// winsock2.h 사용을 위해 초기화
 WSADATA wsaData;
-// 클라이언트 소켓
-SOCKET hClntSock[MAX];
-// 소켓 디스크립터 값을 저장하기 위한 구조체 변수, 클라이언트의 주소값을 저장하기 위한 구조체 변수
+// 클라이언트 소켓 배열, 서버 소켓
+SOCKET hClntSock[MAX], hServSock;
+// 서버 소켓, 클라이언트 소켓 주소
 SOCKADDR_IN servAddr, clntAddr[MAX];
+// 소켓 변화 감지를 위한 set와 원본 훼손 방지를 위한 cpset
 fd_set set, cpset;
+// 각각 select와 recv 함수 반환값 저장
 int fd_num, chk_conn;
+// 서버 실행 여부를 나타냄
+bool servRunning;
+
 WCHAR buf[MAX] = {};
 WCHAR buf2[MAX] = {};
 
-bool servRunning;			// 서버 실행 여부를 나타냅니다.
-SOCKET hServSock;				// 서버 소켓 구조체
-
-void app_print(HWND hWnd, HDC hdc, const wchar_t* str);
+//app_print를 통한 출력 시 y좌표
 int t_y;
 
+void app_print(HWND hWnd, HDC hdc, const wchar_t* str);
 void WSAStartup_error(HWND hWnd, int code);
 void bind_error(HWND hWnd, int code);
+void termServ(HWND hWnd, HDC hdc);
 
 /*!
 * @breif		서버의 동작시에 실행되는 스레드
@@ -42,21 +46,18 @@ DWORD WINAPI runServ(LPVOID Param)
 	int i, j;
 	t_y = 0;
 
-	// DC 를 할당
+	// DeviceContext 할당
 	HDC hdc = GetDC(hWnd);
-
-	// 글짜 배경 표시를 투명하게 변경
+	// 그리기 영역 바탕을 투명하게 설정
 	SetBkMode(hdc, TRANSPARENT);
-	// 윈도우 영역을 다시 그림
 	InvalidateRect(hWnd, NULL, TRUE);
 
 	// 소켓 프로그램 시작부
-	// DLL초기화 및 애플리케이션 요구사항 충족 확인
+	// DLL 초기화 및 애플리케이션 요구사항 충족 확인
 	if ((i = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0)
 	{
-		// 결과에 따라 에러를 출력
+		// 결과에 따라 오류 출력
 		WSAStartup_error(hWnd,i);
-
 		// 스레드 종료
 		servRunning = false;
 		ExitThread(0);
@@ -216,8 +217,6 @@ DWORD WINAPI runServ(LPVOID Param)
 	// 서버 종료
 	app_print(hWnd, hdc, L"Server Terminated.");
 	ReleaseDC(hWnd, hdc);
-
-	// 스레드 종료
 	closesocket(hServSock);
 	WSACleanup();
 	ExitThread(0);
@@ -301,7 +300,7 @@ void bind_error(HWND hWnd, int code)
 		MessageBox(hWnd, L"bind error!", L"잘못된 인수가 전달되었습니다.", NULL);
 		break;
 	case WSAENOBUFS:
-		MessageBox(hWnd, L"bind error!", L"메모리가 초가되었습니다.", NULL);
+		MessageBox(hWnd, L"bind error!", L"메모리가 초과되었습니다.", NULL);
 		break;
 	case WSAENOTSOCK:
 		MessageBox(hWnd, L"bind error!", L"소켓이 아닙니다.", NULL);
@@ -325,4 +324,7 @@ void app_print(HWND hWnd, HDC hdc, const wchar_t* str)
 	TextOut(hdc, 10, 10+t_y, str, lstrlenW(str));
 	t_y += 20;
 	InvalidateRect(hWnd, NULL, 0);
+}
+
+void termServ(HWND hWnd, HDC hdc) {
 }
