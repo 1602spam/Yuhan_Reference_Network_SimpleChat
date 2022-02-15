@@ -17,12 +17,16 @@ bool servRunning;
 WCHAR buf[MAX] = {};
 WCHAR buf2[MAX] = {};
 
-//app_print를 통한 출력 시 y좌표
+// app_print를 통한 출력 시 y값
 int t_y;
 
+// 각종 메시지 출력
 void app_print(HWND hWnd, HDC hdc, const wchar_t* str);
+// WSAStartup() 오류 핸들러
 void WSAStartup_error(HWND hWnd, int code);
+// bind() 오류 핸들러
 void bind_error(HWND hWnd, int code);
+// 서버 종료
 void termServ(HWND hWnd, HDC hdc);
 
 /*!
@@ -38,15 +42,20 @@ void termServ(HWND hWnd, HDC hdc);
 
 DWORD WINAPI runServ(LPVOID Param)
 {
-	// 인자인 Param 값을 hWnd 값으로 변경
+	// 인자인 Param 값을 hWnd로 변경
 	HWND hWnd = (HWND)Param;
+	// bind할 포트 번호
 	int portNumber = 10000;
+	// 클라이언트 주소의 크기를 저장
 	int szClntAddr;
+	// select 함수에서 사용할 타임아웃
 	timeval timeout;
+	// 함수 반환값 및 반복문 처리할 임시 변수
 	int i, j;
+	// app_print y값 초기화
 	t_y = 0;
 
-	// DeviceContext 할당
+	// Device Context 할당
 	HDC hdc = GetDC(hWnd);
 	// 그리기 영역 바탕을 투명하게 설정
 	SetBkMode(hdc, TRANSPARENT);
@@ -56,7 +65,7 @@ DWORD WINAPI runServ(LPVOID Param)
 	// DLL 초기화 및 애플리케이션 요구사항 충족 확인
 	if ((i = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0)
 	{
-		// 결과에 따라 오류 출력
+		// 오류 핸들러 호출
 		WSAStartup_error(hWnd,i);
 		// 스레드 종료
 		servRunning = false;
@@ -64,57 +73,45 @@ DWORD WINAPI runServ(LPVOID Param)
 	}
 
 	// 서버 소켓 할당
-	// 반환값은 소켓 디스크립터
 	hServSock = socket(PF_INET, SOCK_STREAM, 0);
 
-	// 소켓 할당에 실패한 경우
+	// 소켓 할당 실패 시
 	if (hServSock == INVALID_SOCKET)
 	{
-		// 에러메시지 출력
+		// 오류 메시지 출력
 		MessageBox(hWnd, L"socket() error!", L"에러", NULL);
-		// 소켓 통신 종료
-		WSACleanup();
-
 		// 스레드 종료
-		WSACleanup();
-		servRunning = false;
-		ExitThread(0);
+		termServ(hWnd, hdc);
 	}
 
-	// 통신이 준비되었음을 알리는 코드
+	// 소켓 생성 완료 메시지 출력
 	app_print(hWnd, hdc, L"Successfully created socket.");
 
 	// servAddr 구조체의 메모리 초기화
 	memset(&servAddr, 0x00, sizeof(servAddr));
-	// IPv4 인터넷 프로토콜 주소 체계를 사용
+	// IPv4 주소 체계를 사용
 	servAddr.sin_family = AF_INET;
-	// 주소값을 0으로 초기화
+	// htonl == host to network large, 4바이트 호스트 방식 정렬 데이터를 네트워크 주소 방식 정렬
+	// INADDR_ANY == 현재 사용 가능한 랜카드 IP주소
 	servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	// htons == host to network small, 2바이트 호스트 방식 정렬 데이터를 네트워크 주소 방식 정렬
 	// 포트번호를 portNumber 변수로 초기화
 	servAddr.sin_port = htons(portNumber);
 
-
-	// 로컬 주소를 소켓과 연결
+	// 설정이 완료된 servAddr 구조체를 hServSock 소켓에 bind, 오류가 발생할 시
 	if ((i = bind(hServSock, (sockaddr*)&servAddr, sizeof(servAddr))) == SOCKET_ERROR)
 	{
 		// 에러메시지 출력
 		bind_error(hWnd, i);
-
 		// 스레드 종료
-		closesocket(hServSock);
-		WSACleanup();
-		servRunning = false;
-		ExitThread(0);
+		termServ(hWnd, hdc);
 	}
-	else {
-		// 성공 메시지 출력
-		app_print(hWnd, hdc, L"Bind succeed.");
-	}
+	// bind 성공 시 메시지 출력
+	app_print(hWnd, hdc, L"Bind succeed.");
 
-	// 네트워크 입력을 받음
-	// 사용자가 들어올 때 까지 대기
+	// 클라이언트의 연결 요청 대기, 대기열 크기 10
 	listen(hServSock, 10);
-
+	// listen 메시지 출력
 	app_print(hWnd, hdc, L"Listening...");
 
 	// file descriptor는 소켓이 들어가는 배열 구조체
@@ -131,81 +128,83 @@ DWORD WINAPI runServ(LPVOID Param)
 	// 무한 반복 구문
 	while (1)
 	{
-		//서버 실행 중이 아니면 while문 탈출, 서버와 스레드 종료
+		// 서버 실행 중이 아니면 while문 탈출, 서버와 스레드 종료
 		if (servRunning == false)
 			break;
 
-		//select문을 쓰면 fd_set 원형이 훼손되기 때문에 기존 set를 복사해서 사용
+		// select문을 쓰면 fd_set 원형이 훼손되기 때문에 기존 set를 복사해서 사용
 		cpset = set;
 		
-		//select문은 file descriptor의 변경을 감지, 현재는 fd_set에 서버 소켓 하나만 있는 상태
-		//인수는 차례로 (개수, 입력 감지할 세트, 출력 감지할 세트, 오류 감지할 세트, 타임아웃)
+		// select문은 file descriptor의 변경을 감지, 현재는 fd_set에 서버 소켓 하나만 있는 상태
+		// 인수는 차례로 (개수, 입력 감지할 세트, 출력 감지할 세트, 오류 감지할 세트, 타임아웃)
 		fd_num = select(set.fd_count, &cpset, 0, 0, &timeout);
 
-		//오류 발생 시 while문 탈출, 서버와 스레드 종료
+		// 오류 발생 시 while문 탈출, 서버와 스레드 종료
 		if (fd_num == -1)
 			break;
-		//변화값이 없을 경우 처리하지 않고 반복
+		// 변화값이 없는 경우 처리하지 않고 반복
 		else if (fd_num == 0)
 			continue;
 
-		//set의 file descriptor 개수만큼 반복
+		// set의 file descriptor 개수만큼 반복
 		for (i = 0; i < set.fd_count; i++)
 		{
-			//어느 소켓에서 변화가 발생했는지 판단
+			// 해당 소켓에서 변화가 발생했는지 판단
 			if (FD_ISSET(set.fd_array[i], &cpset))
 			{
-				//해당 소켓이 서버 소켓이라면 신규 연결 신호가 온 것
+				// 해당 소켓이 서버 소켓이라면 신규 연결 신호가 온 것
 				if (set.fd_array[i] == hServSock)
 				{
-					//클라이언트 주소 크기를 구하고 accept, 연결된 소켓은 클라이언트 소켓 배열에 할당
+					// 클라이언트 주소 크기를 구하고 accept, accept로 연결 후 반환된 소켓은 클라이언트 소켓 배열에 할당
 					szClntAddr = sizeof(clntAddr);
 					hClntSock[i] = accept(hServSock, (SOCKADDR*)&clntAddr, &szClntAddr);
 
-					//해당 소켓을 fd_set에 할당하고 fd_count보다 작다면 i로 설정
+					// 해당 소켓을 fd_set에 할당하고 fd_count보다 작다면 i로 설정
 					FD_SET(hClntSock[i], &set);
 					if (set.fd_count < i)
 						set.fd_count = i;
 
-					//연결에 성공했다면 연결 성공 메시지 출력
+					// 연결에 성공했다면 연결 성공 메시지 출력
 					if (hClntSock[i] != -1) {
 						wsprintf(buf, L"Connected Client: %d", hClntSock[i]);
 						app_print(hWnd, hdc, buf);
+						// 모든 클라이언트에 전송
 						for (j = 0; j < set.fd_count; j++)
 							send(set.fd_array[j], (char*)buf, MAX, 0);
 					}
 				}
-				//해당 소켓이 서버 소켓이 아닌 경우
+				// 해당 소켓이 서버 소켓이 아닌 경우
 				else
 				{
-					//연결 확인을 위한 recv 함수 반환
+					// 연결 확인을 위한 recv 함수 반환
 					chk_conn = recv(set.fd_array[i], (char*)buf, MAX, 0);
-					//리턴 값이 0이면 정상 종료, 1이면 비정상 종료임을 나타냄
+					// 리턴 값이 0이면 정상 종료, 1이면 비정상 종료임을 나타냄
 					if (chk_conn <= 0)
 					{
-						//접속 종료 메시지 설정
+						// 접속 종료 메시지 설정
 						wsprintf(buf, L"Disconnected Client: %d", set.fd_array[i]);
-						
-						//해당 소켓을 set에서 찾아 종료
+						// 해당 소켓을 set에서 찾아 닫아줌
 						closesocket(set.fd_array[i]);
-						//종료된 소켓이 있던 fd_set 내 배열 원소를 0으로 초기화
+						// 종료된 소켓이 있던 fd_set 내 배열 원소를 0으로 초기화
 						FD_CLR(set.fd_array[i], &set);
 						
-						//접속 종료 메시지 출력
+						// 접속 종료 메시지 출력
 						app_print(hWnd, hdc, buf);
+						// 모든 클라이언트에 전송
 						for (j = 0; j < set.fd_count; j++)
 							send(set.fd_array[j], (char*)buf, MAX, 0);
 					}
-					//recv 함수가 정상 작동한 경우(반환값 1인 경우)
+					// recv 함수가 정상 작동한 경우(반환값 1인 경우)
 					else
 					{
-						//buf2에는 해당 소켓 번호를 저장
+						// buf2에는 해당 소켓 번호를 저장
 						wsprintf(buf2, L"%d         : ", set.fd_array[i]);
-						//buf2 뒤에 recv한 메시지가 저장되어 있는 buf를 붙임
+						// buf2 뒤에 recv한 메시지가 저장되어 있는 buf를 붙임
 						wcscat(buf2, buf);
-						//buf2를 출력
-						//846		: hello 와 같은 형태로 출력
+						// buf2를 출력
+						// 846		: hello 와 같은 형태로 출력
 						app_print(hWnd, hdc, buf2);
+						// 모든 클라이언트에 전송
 						for (j = 0; j < set.fd_count; j++)
 							send(set.fd_array[j], (char*)buf2, MAX, 0);
 					}
@@ -216,10 +215,7 @@ DWORD WINAPI runServ(LPVOID Param)
 
 	// 서버 종료
 	app_print(hWnd, hdc, L"Server Terminated.");
-	ReleaseDC(hWnd, hdc);
-	closesocket(hServSock);
-	WSACleanup();
-	ExitThread(0);
+	termServ(hWnd, hdc);
 	return 0;
 }
 
@@ -279,10 +275,10 @@ void bind_error(HWND hWnd, int code)
 		MessageBox(hWnd, L"bind error!", L"WSAStartup 함수가 호출되지 않았습니다.", NULL);
 		break;	
 	case WSAENETDOWN:
-		MessageBox(hWnd, L"bind error!", L"네트워크 하위시스템이 가동에 실패 했습니다.", NULL);
+		MessageBox(hWnd, L"bind error!", L"네트워크 하위시스템이 가동에 실패했습니다.", NULL);
 		break;
 	case WSAEACCES:
-		MessageBox(hWnd, L"bind error!", L"액세스위반으로 차단되었습니다.", NULL);
+		MessageBox(hWnd, L"bind error!", L"액세스 위반으로 차단되었습니다.", NULL);
 		break;
 	case WSAEADDRINUSE:
 		MessageBox(hWnd, L"bind error!", L"해당 주소 또는 포트는 이미 사용중 입니다.", NULL);
@@ -327,4 +323,9 @@ void app_print(HWND hWnd, HDC hdc, const wchar_t* str)
 }
 
 void termServ(HWND hWnd, HDC hdc) {
+	ReleaseDC(hWnd, hdc);
+	closesocket(hServSock);
+	WSACleanup();
+	servRunning = false;
+	ExitThread(0);
 }
