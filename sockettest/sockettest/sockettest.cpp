@@ -3,8 +3,8 @@
 #include "framework.h"
 #include "sockettest.h"
 
-#define SC_WIDTH 1425						// 윈도우 창의 넓이를 나타냅니다.
-#define SC_HEIGHT 751						// 윈도우 창의 높이를 나타냅니다.
+#define SC_WIDTH 1424						// 윈도우 창의 넓이를 나타냅니다.
+#define SC_HEIGHT 750						// 윈도우 창의 높이를 나타냅니다.
 
 #define TIMER_ID_RECVMS 1
 
@@ -136,12 +136,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// 서버를 실행하는 버튼을 생성한다.
 		// 이벤트	IDM_BTN_ServSTART	101
 		CreateWindow(L"button", L"Launch Server", WS_CHILD | WS_VISIBLE,
-			500, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServSTART, hInst, NULL);
+			SC_WIDTH - 400, 0, 200, 60, hWnd, (HMENU)IDM_BTN_ServSTART, hInst, NULL);
 
 		// 서버를 종료하는 버튼을 생성한다.
 		// 이벤트	IDM_BTN_ServCLOSE	102
 		CreateWindow(L"button", L"Terminate Server", WS_CHILD | WS_VISIBLE,
-			850, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServCLOSE, hInst, NULL);
+			SC_WIDTH - 200, 0, 200, 60, hWnd, (HMENU)IDM_BTN_ServCLOSE, hInst, NULL);
 	}
 		break;
 

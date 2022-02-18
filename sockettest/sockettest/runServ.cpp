@@ -1,33 +1,32 @@
 #include "framework.h"
 #include "sockettest.h"
 
-// winsock2.h 사용을 위해 초기화
-WSADATA wsaData;
-// 클라이언트 소켓 배열, 서버 소켓
-SOCKET hClntSock[MAX], hServSock;
-// 서버 소켓, 클라이언트 소켓 주소
-SOCKADDR_IN servAddr, clntAddr[MAX];
-// 소켓 변화 감지를 위한 set와 원본 훼손 방지를 위한 cpset
-fd_set set, cpset;
-// 각각 select와 recv 함수 반환값 저장
-int fd_num, chk_conn;
-// 서버 실행 여부를 나타냄
-bool servRunning;
+
+WSADATA wsaData;						// winsock2.h 사용을 위해 초기화
+
+SOCKET hClntSock[MAX], hServSock;		// 클라이언트 소켓 배열, 서버 소켓
+
+SOCKADDR_IN servAddr, clntAddr[MAX];	// 서버 소켓, 클라이언트 소켓 주소
+
+fd_set set, cpset;						// 소켓 변화 감지를 위한 set와 원본 훼손 방지를 위한 cpset
+
+int fd_num, chk_conn;					// 각각 select와 recv 함수 반환값 저장
+
+bool servRunning;						// 서버 실행 여부를 나타냄
 
 WCHAR buf[MAX] = {};
 WCHAR buf2[MAX] = {};
 
-// app_print를 통한 출력 시 y값
-int t_y;
+int t_y;								// app_print를 통한 출력 시 y값
 
-// 각종 메시지 출력
-void app_print(HWND hWnd, HDC hdc, const wchar_t* str);
-// WSAStartup() 오류 핸들러
-void WSAStartup_error(HWND hWnd, int code);
-// bind() 오류 핸들러
-void bind_error(HWND hWnd, int code);
-// 서버 종료
-void termServ(HWND hWnd, HDC hdc);
+
+void app_print(HWND hWnd, HDC hdc, const wchar_t* str);	// 각종 메시지 출력
+
+void WSAStartup_error(HWND hWnd, int code);				// WSAStartup() 오류 핸들러
+
+void bind_error(HWND hWnd, int code);					// bind() 오류 핸들러
+
+void termServ(HWND hWnd, HDC hdc);						// 서버 종료
 
 /*!
 * @breif		서버의 동작시에 실행되는 스레드
@@ -39,26 +38,23 @@ void termServ(HWND hWnd, HDC hdc);
 * @warning
 */
 
-
 DWORD WINAPI runServ(LPVOID Param)
 {
-	// 인자인 Param 값을 hWnd로 변경
-	HWND hWnd = (HWND)Param;
-	// bind할 포트 번호
-	int portNumber = 10000;
-	// 클라이언트 주소의 크기를 저장
-	int szClntAddr;
-	// select 함수에서 사용할 타임아웃
-	timeval timeout;
-	// 함수 반환값 및 반복문 처리할 임시 변수
-	int i, j;
-	// app_print y값 초기화
-	t_y = 0;
+	HWND hWnd = (HWND)Param;		// 인자인 Param 값을 hWnd로 변경
+	
+	int portNumber = 10000;			// bind할 포트 번호 설정
+	
+	int szClntAddr;					// 클라이언트 주소의 크기를 저장
+	
+	timeval timeout;				// select 함수에서 사용할 타임아웃
+	
+	int i, j;						// 함수 반환값 및 반복문 처리할 임시 변수
+	
+	t_y = 0;						// app_print y값 초기화
 
-	// Device Context 할당
-	HDC hdc = GetDC(hWnd);
-	// 그리기 영역 바탕을 투명하게 설정
-	SetBkMode(hdc, TRANSPARENT);
+	HDC hdc = GetDC(hWnd);			// Device Context 할당
+	
+	SetBkMode(hdc, TRANSPARENT);	// 그리기 영역 바탕을 투명하게 설정
 	InvalidateRect(hWnd, NULL, TRUE);
 
 	// 소켓 프로그램 시작부
@@ -66,10 +62,9 @@ DWORD WINAPI runServ(LPVOID Param)
 	if ((i = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0)
 	{
 		// 오류 핸들러 호출
-		WSAStartup_error(hWnd,i);
+		WSAStartup_error(hWnd, i);
 		// 스레드 종료
-		servRunning = false;
-		ExitThread(0);
+		termServ(hWnd, hdc);
 	}
 
 	// 서버 소켓 할당
@@ -120,7 +115,7 @@ DWORD WINAPI runServ(LPVOID Param)
 	FD_SET(hServSock, &set);
 
 	app_print(hWnd, hdc, L"Server is running...");
-	
+
 	//타임아웃 구조체 멤버 설정(초, 밀리초)
 	timeout.tv_sec = 5;
 	timeout.tv_usec = 5000;
@@ -134,7 +129,7 @@ DWORD WINAPI runServ(LPVOID Param)
 
 		// select문을 쓰면 fd_set 원형이 훼손되기 때문에 기존 set를 복사해서 사용
 		cpset = set;
-		
+
 		// select문은 file descriptor의 변경을 감지, 현재는 fd_set에 서버 소켓 하나만 있는 상태
 		// 인수는 차례로 (개수, 입력 감지할 세트, 출력 감지할 세트, 오류 감지할 세트, 타임아웃)
 		fd_num = select(set.fd_count, &cpset, 0, 0, &timeout);
@@ -187,7 +182,7 @@ DWORD WINAPI runServ(LPVOID Param)
 						closesocket(set.fd_array[i]);
 						// 종료된 소켓이 있던 fd_set 내 배열 원소를 0으로 초기화
 						FD_CLR(set.fd_array[i], &set);
-						
+
 						// 접속 종료 메시지 출력
 						app_print(hWnd, hdc, buf);
 						// 모든 클라이언트에 전송
@@ -273,7 +268,7 @@ void bind_error(HWND hWnd, int code)
 	{
 	case WSANOTINITIALISED:
 		MessageBox(hWnd, L"bind error!", L"WSAStartup 함수가 호출되지 않았습니다.", NULL);
-		break;	
+		break;
 	case WSAENETDOWN:
 		MessageBox(hWnd, L"bind error!", L"네트워크 하위시스템이 가동에 실패했습니다.", NULL);
 		break;
@@ -317,8 +312,9 @@ void bind_error(HWND hWnd, int code)
 
 void app_print(HWND hWnd, HDC hdc, const wchar_t* str)
 {
-	TextOut(hdc, 10, 10+t_y, str, lstrlenW(str));
+	TextOut(hdc, 10, 10 + t_y, str, lstrlenW(str));
 	t_y += 20;
+
 	InvalidateRect(hWnd, NULL, 0);
 }
 
