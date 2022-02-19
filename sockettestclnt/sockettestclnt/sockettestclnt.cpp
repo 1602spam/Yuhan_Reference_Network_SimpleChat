@@ -4,6 +4,9 @@
 #include "framework.h"
 #include "sockettestclnt.h"
 
+#define SC_WIDTH 1424						// 윈도우 창의 넓이를 나타냅니다.
+#define SC_HEIGHT 750						// 윈도우 창의 높이를 나타냅니다.
+
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
@@ -150,11 +153,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // 서버를 실행하는 버튼을 생성한다.
         // 이벤트	IDM_BTN_ServSTART	101
         CreateWindow(L"button", L"Connect", WS_CHILD | WS_VISIBLE,
+<<<<<<< HEAD
             10, 610, 130, 30, hWnd, (HMENU)IDM_BTN_ServConn, hInst, NULL);
+=======
+            SC_WIDTH - 400, 0, 200, 60, hWnd, (HMENU)IDM_BTN_ServConn, hInst, NULL);
+>>>>>>> 06054cc2b8ef529b92a309600285f2bad3226edf
 
         // 서버를 종료하는 버튼을 생성한다.
         // 이벤트	IDM_BTN_ServCLOSE	102
         CreateWindow(L"button", L"Disconnect", WS_CHILD | WS_VISIBLE,
+<<<<<<< HEAD
             150, 610, 130, 30, hWnd, (HMENU)IDM_BTN_ServDC, hInst, NULL);
 
         // 클라이언트의 크기 설정
@@ -165,6 +173,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         // 윈도우 크기 고정
         ScreenFix(lParam);
+=======
+            SC_WIDTH - 200, 0, 200, 60, hWnd, (HMENU)IDM_BTN_ServDC, hInst, NULL);
+>>>>>>> 06054cc2b8ef529b92a309600285f2bad3226edf
     }
         break;
     case WM_LBUTTONDOWN:
@@ -235,6 +246,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         hSocket = NULL;
                     }
                 }
+                }
+                break;
+
+            case IDM_BTN_SendFile:
+                {
                 }
                 break;
 
