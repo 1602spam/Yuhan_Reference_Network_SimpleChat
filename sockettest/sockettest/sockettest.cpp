@@ -3,9 +3,6 @@
 #include "framework.h"
 #include "sockettest.h"
 
-#define SC_WIDTH 1424						// 윈도우 창의 넓이를 나타냅니다.
-#define SC_HEIGHT 750						// 윈도우 창의 높이를 나타냅니다.
-
 #define TIMER_ID_RECVMS 1
 
 // 전역 변수:
@@ -218,14 +215,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	}
 		break;
-		/*
-	case WM_USER+1:
-	{
-		if (servRunning == true && recv(hClntSock, (char*)buf, MAX, 0))
-		MessageBox(hWnd, buf, buf, NULL);
-	}   
-	break;
-	*/
+
 	case WM_PAINT:
 		{
 			PAINTSTRUCT ps;

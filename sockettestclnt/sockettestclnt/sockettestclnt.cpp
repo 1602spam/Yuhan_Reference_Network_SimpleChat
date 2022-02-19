@@ -4,15 +4,13 @@
 #include "framework.h"
 #include "sockettestclnt.h"
 
-#define SC_WIDTH 1424						// 윈도우 창의 넓이를 나타냅니다.
-#define SC_HEIGHT 750						// 윈도우 창의 높이를 나타냅니다.
+#define SC_WIDTH 1280						// 윈도우 창의 넓이를 나타냅니다.
+#define SC_HEIGHT 800						// 윈도우 창의 높이를 나타냅니다.
 
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
-
-int STATE = 0;                              // 출력할 화면을 구별하기 위한 변수
 
 extern SOCKET hSocket;
 extern WCHAR buf[MAX];
@@ -130,9 +128,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 //
 HWND h_chatarea;
-HWND h_SETbtn;
-HWND h_MAINbtn;
-HWND h_CHATbtn;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -140,16 +135,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
     {
-        h_MAINbtn = CreateWindow(L"button", L"MAIN", WS_CHILD | WS_VISIBLE,
-            10, 10, 50, 50, hWnd, (HMENU)IDM_BTN_TEST1, hInst, NULL);
-        h_CHATbtn = CreateWindow(L"button", L"CHAT", WS_CHILD | WS_VISIBLE,
-            80, 10, 50, 50, hWnd, (HMENU)IDM_BTN_TEST2, hInst, NULL);
-        h_SETbtn = CreateWindow(L"button", L"SET", WS_CHILD | WS_VISIBLE,
-            230, 670, 50, 50, hWnd, (HMENU)IDM_BTN_TEST3, hInst, NULL);
         h_chatarea = CreateWindow(L"edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | WS_VSCROLL,
-            300, 700, 680, 100, hWnd, (HMENU)ID_EDIT, hInst, NULL);
-        ShowWindow(h_chatarea, SW_HIDE);
-        ShowWindow(h_MAINbtn, SW_HIDE);
+            300, 1+700, 680-3, 40, hWnd, (HMENU)ID_EDIT, hInst, NULL);
+        ShowWindow(h_chatarea, SW_SHOW);
         // 서버를 실행하는 버튼을 생성한다.
         // 이벤트	IDM_BTN_ServSTART	101
         CreateWindow(L"button", L"Connect", WS_CHILD | WS_VISIBLE,
@@ -164,21 +152,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         ScreenSet(hWnd);
     }
         break;
+
     case WM_GETMINMAXINFO:  // 윈도우의 크기나 위치를 바꿀 때 발생되는 메시지
     {
         // 윈도우 크기 고정
         ScreenFix(lParam);
-    }
-        break;
-    case WM_LBUTTONDOWN:
-    {
-        
-    }
-        break;
-    
-    case WM_RBUTTONDOWN:
-    {
-        
     }
         break;
 
@@ -190,34 +168,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             hdc = GetDC(hWnd);
             switch (wmId)
             {
-            case IDM_BTN_TEST1:
-            {
-                STATE = 0;
-                ShowWindow(h_chatarea, SW_HIDE);
-                ShowWindow(h_MAINbtn, SW_HIDE);
-                ShowWindow(h_CHATbtn, SW_SHOW);
-                ShowWindow(h_SETbtn, SW_SHOW);
-                InvalidateRect(hWnd, NULL, TRUE);
-            }
-                break;
-            case IDM_BTN_TEST2:
-            {
-                STATE = 1;
-                ShowWindow(h_chatarea, SW_SHOW);
-                ShowWindow(h_MAINbtn, SW_SHOW);
-                InvalidateRect(hWnd, NULL, TRUE);
-            }
-                break;
-            case IDM_BTN_TEST3:
-            {
-                STATE = 2;
-                ShowWindow(h_chatarea, SW_HIDE);
-                ShowWindow(h_MAINbtn, SW_SHOW);
-                ShowWindow(h_CHATbtn, SW_HIDE);
-                ShowWindow(h_SETbtn, SW_HIDE);
-                InvalidateRect(hWnd, NULL, TRUE);
-            }
-                break;
             case IDM_BTN_ServConn:
                 if (clntConnected == false)
                 {
@@ -265,10 +215,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 break;
 
             case IDM_EXIT:
+            {
                 WSACleanup();
                 closesocket(hSocket);
                 DestroyWindow(hWnd);
-                break;
+            }
+            break;
 
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
@@ -280,14 +232,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            
+            SetBkMode(hdc, TRANSPARENT);
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
-            if(STATE == 0)
-                drawInitScreen(hdc, hWnd, hInst);
-            else if(STATE == 1)
-                drawIntoRoom(hdc, hWnd, hInst);
-            else if(STATE == 2)
-                drawIntoSet(hdc, hWnd, hInst);
+            drawIntoRoom(hdc, hWnd, hInst);
+
             EndPaint(hWnd, &ps);
         }
         break;

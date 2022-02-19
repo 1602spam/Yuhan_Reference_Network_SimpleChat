@@ -2,33 +2,42 @@
 #include "sockettestclnt.h"
 
 // 디버그 메시지 출력 여부, 언더바 지우면 출력
-#define SHOW_DEBUG_LOG_
+#define SHOW_DEBUG_LOG _
 
 // 메시지 처리를 위한 버퍼
 WCHAR buf[MAX];
+
 // winsock2.h 사용을 위해 초기화
 WSADATA wsaData;
+
 // 클라이언트 소켓
 SOCKET hSocket;
+
 // 소켓 주소
 SOCKADDR_IN servAddr;
+
 // 소켓 변화 감지를 위한 set와 원본 훼손 방지를 위한 cpset
 fd_set set, cpset;
+
+// app_print 함수에서 문자열 출력할 좌표
+int t_y;
+
 // 각각 select와 recv 함수 반환값 저장
 int fd_num, chk_conn;
+
 // 클라이언트 접속 여부
 bool clntConnected;
+
 // 접속할 IP 주소
 char connIP[] = "127.0.0.1";
+
 // 접속할 포트 번호
 int connPort = 10000;
 
-// app_print를 통한 출력 시 y값
-int t_y;
+// 버퍼 출력 함수
+void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos);
 
-// 각종 메시지 출력
-void app_print(HWND hWnd, HDC hdc, const wchar_t* str);
-// 연결 종료
+// 연결 종료 함수
 void termConn(HWND hWnd, HDC hdc);
 
 DWORD WINAPI connServ(LPVOID Param)
@@ -39,8 +48,12 @@ DWORD WINAPI connServ(LPVOID Param)
     HDC hdc = GetDC(hWnd);
     // select 함수에서 사용할 타임아웃
     timeval timeout;
-    // app_print y값 초기화
-    t_y = 0;
+
+    POINT apos[2] = {
+    {310, 10},
+    {SC_WIDTH - 390, 80}
+    };
+
     // 그리기 영역 바탕을 투명하게 설정
     SetBkMode(hdc, TRANSPARENT);
     InvalidateRect(hWnd, NULL, 1);
@@ -49,9 +62,11 @@ DWORD WINAPI connServ(LPVOID Param)
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         // 실패 메시지 버퍼에 입력
         wsprintf(buf, L"Winsock initialize failed.");
+
 #ifdef SHOW_DEBUG_LOG
-        app_print(hWnd, hdc, buf); // SHOW_DEBUG_LOG 정의되었다면 출력
+        app_print(hWnd, hdc, buf, &apos[0]); // SHOW_DEBUG_LOG 정의되었다면 출력
 #endif
+
         // 스레드 종료
         termConn(hWnd, hdc);
     }
@@ -59,7 +74,7 @@ DWORD WINAPI connServ(LPVOID Param)
         wsprintf(buf, L"Winsock initialize succeed.");
 
 #ifdef SHOW_DEBUG_LOG
-    app_print(hWnd, hdc, buf);
+    app_print(hWnd, hdc, buf, &apos[0]);
 #endif
 
     // 소켓 할당
@@ -70,7 +85,7 @@ DWORD WINAPI connServ(LPVOID Param)
         // 실패 메시지 버퍼에 입력
         wsprintf(buf, L"Failed to create socket.");
 #ifdef SHOW_DEBUG_LOG
-        app_print(hWnd, hdc, buf);
+        app_print(hWnd, hdc, buf, &apos[0]);
 #endif
         termConn(hWnd, hdc);
     }
@@ -78,7 +93,7 @@ DWORD WINAPI connServ(LPVOID Param)
         wsprintf(buf, L"Successfully created socket.");
 
 #ifdef SHOW_DEBUG_LOG
-    app_print(hWnd, hdc, buf);
+    app_print(hWnd, hdc, buf, &apos[0]);
 #endif
 
     // 메모리 초기화
@@ -93,7 +108,7 @@ DWORD WINAPI connServ(LPVOID Param)
 
 #ifdef SHOW_DEBUG_LOG
     wsprintf(buf, L"Trying to connect...");
-    app_print(hWnd, hdc, buf);
+    app_print(hWnd, hdc, buf, &apos[0]);
 #endif
 
     //연결 실패 시
@@ -101,7 +116,7 @@ DWORD WINAPI connServ(LPVOID Param)
     {
         #ifdef SHOW_DEBUG_LOG
             wsprintf(buf, L"Connection failed.");
-            app_print(hWnd, hdc, buf);
+            app_print(hWnd, hdc, buf, &apos[0]);
         #endif
         // 스레드 종료
         termConn(hWnd, hdc);
@@ -110,7 +125,7 @@ DWORD WINAPI connServ(LPVOID Param)
     {
     #ifdef SHOW_DEBUG_LOG
         wsprintf(buf, L"Connection Succeed.");
-        app_print(hWnd, hdc, buf);
+        app_print(hWnd, hdc, buf, &apos[0]);
     #endif
 
         // fd_set 초기화
@@ -149,7 +164,7 @@ DWORD WINAPI connServ(LPVOID Param)
                 #ifdef SHOW_DEBUG_LOG
                     if (clntConnected) {
                         wsprintf(buf, L"Server error occurred.");
-                        app_print(hWnd, hdc, buf);
+                        app_print(hWnd, hdc, buf, &apos[0]);
                     }
                 #endif
                     break;
@@ -157,21 +172,22 @@ DWORD WINAPI connServ(LPVOID Param)
                 else // 정상적인 메시지 수신 시
                 {
                     // 해당 메시지 출력
-                    app_print(hWnd, hdc, buf);
+                    app_print(hWnd, hdc, buf, &apos[0]);
                 }
             }
         }
     }
-
-    app_print(hWnd, hdc, L"Disconnected.");
+    wsprintf(buf, L"Disconnected.");
+    app_print(hWnd, hdc, buf, &apos[0]);
     termConn(hWnd, hdc);
     return 0;
 }
 
-void app_print(HWND hWnd, HDC hdc, const wchar_t* str)
+void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos)
 {
-    TextOut(hdc, 10, 10 + t_y, str, lstrlenW(str));
-    t_y += 20;
+    TextOut(hdc, pos->x, pos->y, str, lstrlenW(str));
+    pos->y += 20;
+
     InvalidateRect(hWnd, NULL, 0);
 }
 

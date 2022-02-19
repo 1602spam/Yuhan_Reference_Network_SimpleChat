@@ -17,10 +17,9 @@ bool servRunning;						// 서버 실행 여부를 나타냄
 WCHAR buf[MAX] = {};
 WCHAR buf2[MAX] = {};
 
-int t_y;								// app_print를 통한 출력 시 y값
+WCHAR clntList[MAX] = {};
 
-
-void app_print(HWND hWnd, HDC hdc, const wchar_t* str);	// 각종 메시지 출력
+void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos);	// 각종 메시지 출력
 
 void WSAStartup_error(HWND hWnd, int code);				// WSAStartup() 오류 핸들러
 
@@ -49,8 +48,11 @@ DWORD WINAPI runServ(LPVOID Param)
 	timeval timeout;				// select 함수에서 사용할 타임아웃
 	
 	int i, j;						// 함수 반환값 및 반복문 처리할 임시 변수
-	
-	t_y = 0;						// app_print y값 초기화
+
+	POINT apos[2] = {
+	{10, 10},
+	{SC_WIDTH - 390, 80}
+	};
 
 	HDC hdc = GetDC(hWnd);			// Device Context 할당
 	
@@ -80,7 +82,7 @@ DWORD WINAPI runServ(LPVOID Param)
 	}
 
 	// 소켓 생성 완료 메시지 출력
-	app_print(hWnd, hdc, L"Successfully created socket.");
+	app_print(hWnd, hdc, L"Successfully created socket.", &apos[0]);
 
 	// servAddr 구조체의 메모리 초기화
 	memset(&servAddr, 0x00, sizeof(servAddr));
@@ -102,19 +104,19 @@ DWORD WINAPI runServ(LPVOID Param)
 		termServ(hWnd, hdc);
 	}
 	// bind 성공 시 메시지 출력
-	app_print(hWnd, hdc, L"Bind succeed.");
+	app_print(hWnd, hdc, L"Bind succeed.", &apos[0]);
 
 	// 클라이언트의 연결 요청 대기, 대기열 크기 10
 	listen(hServSock, 10);
 	// listen 메시지 출력
-	app_print(hWnd, hdc, L"Listening...");
+	app_print(hWnd, hdc, L"Listening...", &apos[0]);
 
 	// file descriptor는 소켓이 들어가는 배열 구조체
 	// FD_ZERO로 fd_set을 초기화, FD_SET으로 fd_set에 서버 소켓을 넣음
 	FD_ZERO(&set);
 	FD_SET(hServSock, &set);
 
-	app_print(hWnd, hdc, L"Server is running...");
+	app_print(hWnd, hdc, L"Server is running...", &apos[0]);
 
 	//타임아웃 구조체 멤버 설정(초, 밀리초)
 	timeout.tv_sec = 5;
@@ -162,7 +164,7 @@ DWORD WINAPI runServ(LPVOID Param)
 					// 연결에 성공했다면 연결 성공 메시지 출력
 					if (hClntSock[i] != -1) {
 						wsprintf(buf, L"Connected Client: %d", hClntSock[i]);
-						app_print(hWnd, hdc, buf);
+						app_print(hWnd, hdc, buf, &apos[0]);
 						// 모든 클라이언트에 전송
 						for (j = 0; j < set.fd_count; j++)
 							send(set.fd_array[j], (char*)buf, MAX, 0);
@@ -184,7 +186,7 @@ DWORD WINAPI runServ(LPVOID Param)
 						FD_CLR(set.fd_array[i], &set);
 
 						// 접속 종료 메시지 출력
-						app_print(hWnd, hdc, buf);
+						app_print(hWnd, hdc, buf, &apos[0]);
 						// 모든 클라이언트에 전송
 						for (j = 0; j < set.fd_count; j++)
 							send(set.fd_array[j], (char*)buf, MAX, 0);
@@ -198,7 +200,7 @@ DWORD WINAPI runServ(LPVOID Param)
 						wcscat(buf2, buf);
 						// buf2를 출력
 						// 846		: hello 와 같은 형태로 출력
-						app_print(hWnd, hdc, buf2);
+						app_print(hWnd, hdc, buf2, &apos[0]);
 						// 모든 클라이언트에 전송
 						for (j = 0; j < set.fd_count; j++)
 							send(set.fd_array[j], (char*)buf2, MAX, 0);
@@ -209,7 +211,7 @@ DWORD WINAPI runServ(LPVOID Param)
 	}
 
 	// 서버 종료
-	app_print(hWnd, hdc, L"Server Terminated.");
+	app_print(hWnd, hdc, L"Server Terminated.", &apos[0]);
 	termServ(hWnd, hdc);
 	return 0;
 }
@@ -310,10 +312,10 @@ void bind_error(HWND hWnd, int code)
 * @return		void
 */
 
-void app_print(HWND hWnd, HDC hdc, const wchar_t* str)
+void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos)
 {
-	TextOut(hdc, 10, 10 + t_y, str, lstrlenW(str));
-	t_y += 20;
+	TextOut(hdc, pos->x, pos->y, str, lstrlenW(str));
+	pos->y += 20;
 
 	InvalidateRect(hWnd, NULL, 0);
 }

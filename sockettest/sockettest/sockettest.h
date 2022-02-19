@@ -7,6 +7,8 @@
 #define IDM_BTN_ServSTART 101				// 서버 시작 메세지에 대한 코드값
 #define IDM_BTN_ServCLOSE 102				// 서버 종료 메세지에 대한 코드값
 
+#define SC_WIDTH 1424						// 윈도우 창의 넓이를 나타냅니다.
+#define SC_HEIGHT 750						// 윈도우 창의 높이를 나타냅니다.
 /*!
 * @breif		서버 동작 시 실행되는 스레드
 * @details		해당 스레드가 서버의 역할을 하며 수신을 담당한다.
