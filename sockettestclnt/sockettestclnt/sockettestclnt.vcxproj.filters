@@ -35,6 +35,9 @@
     <ClCompile Include="connServ.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="draw.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="sockettestclnt.rc">

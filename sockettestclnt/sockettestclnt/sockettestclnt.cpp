@@ -9,6 +9,8 @@ HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
 
+int STATE = 0;                              // 출력할 화면을 구별하기 위한 변수
+
 extern SOCKET hSocket;
 extern WCHAR buf[MAX];
 extern bool clntConnected;
@@ -124,6 +126,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY  - 종료 메시지를 게시하고 반환합니다.
 //
 //
+HWND h_chatarea;
+HWND h_SETbtn;
+HWND h_MAINbtn;
+HWND h_CHATbtn;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -131,19 +137,36 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
     {
-        CreateWindow(L"edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | WS_VSCROLL, 500, 600, 500, 20, hWnd, (HMENU)ID_EDIT, hInst, NULL);
+        h_MAINbtn = CreateWindow(L"button", L"MAIN", WS_CHILD | WS_VISIBLE,
+            10, 10, 50, 50, hWnd, (HMENU)IDM_BTN_TEST1, hInst, NULL);
+        h_CHATbtn = CreateWindow(L"button", L"CHAT", WS_CHILD | WS_VISIBLE,
+            80, 10, 50, 50, hWnd, (HMENU)IDM_BTN_TEST2, hInst, NULL);
+        h_SETbtn = CreateWindow(L"button", L"SET", WS_CHILD | WS_VISIBLE,
+            230, 670, 50, 50, hWnd, (HMENU)IDM_BTN_TEST3, hInst, NULL);
+        h_chatarea = CreateWindow(L"edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | WS_VSCROLL,
+            300, 700, 680, 100, hWnd, (HMENU)ID_EDIT, hInst, NULL);
+        ShowWindow(h_chatarea, SW_HIDE);
+        ShowWindow(h_MAINbtn, SW_HIDE);
         // 서버를 실행하는 버튼을 생성한다.
         // 이벤트	IDM_BTN_ServSTART	101
         CreateWindow(L"button", L"Connect", WS_CHILD | WS_VISIBLE,
-            500, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServConn, hInst, NULL);
+            10, 610, 130, 30, hWnd, (HMENU)IDM_BTN_ServConn, hInst, NULL);
 
         // 서버를 종료하는 버튼을 생성한다.
         // 이벤트	IDM_BTN_ServCLOSE	102
         CreateWindow(L"button", L"Disconnect", WS_CHILD | WS_VISIBLE,
-            850, 200, 200, 60, hWnd, (HMENU)IDM_BTN_ServDC, hInst, NULL);
+            150, 610, 130, 30, hWnd, (HMENU)IDM_BTN_ServDC, hInst, NULL);
+
+        // 클라이언트의 크기 설정
+        ScreenSet(hWnd);
     }
         break;
-    
+    case WM_GETMINMAXINFO:  // 윈도우의 크기나 위치를 바꿀 때 발생되는 메시지
+    {
+        // 윈도우 크기 고정
+        ScreenFix(lParam);
+    }
+        break;
     case WM_LBUTTONDOWN:
     {
         
@@ -160,9 +183,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             int wmId = LOWORD(wParam);
             // 메뉴 선택을 구문 분석합니다:
-
+            HDC hdc;
+            hdc = GetDC(hWnd);
             switch (wmId)
             {
+            case IDM_BTN_TEST1:
+            {
+                STATE = 0;
+                ShowWindow(h_chatarea, SW_HIDE);
+                ShowWindow(h_MAINbtn, SW_HIDE);
+                ShowWindow(h_CHATbtn, SW_SHOW);
+                ShowWindow(h_SETbtn, SW_SHOW);
+                InvalidateRect(hWnd, NULL, TRUE);
+            }
+                break;
+            case IDM_BTN_TEST2:
+            {
+                STATE = 1;
+                ShowWindow(h_chatarea, SW_SHOW);
+                ShowWindow(h_MAINbtn, SW_SHOW);
+                InvalidateRect(hWnd, NULL, TRUE);
+            }
+                break;
+            case IDM_BTN_TEST3:
+            {
+                STATE = 2;
+                ShowWindow(h_chatarea, SW_HIDE);
+                ShowWindow(h_MAINbtn, SW_SHOW);
+                ShowWindow(h_CHATbtn, SW_HIDE);
+                ShowWindow(h_SETbtn, SW_HIDE);
+                InvalidateRect(hWnd, NULL, TRUE);
+            }
+                break;
             case IDM_BTN_ServConn:
                 if (clntConnected == false)
                 {
@@ -220,7 +272,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
+            
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
+            if(STATE == 0)
+                drawInitScreen(hdc, hWnd, hInst);
+            else if(STATE == 1)
+                drawIntoRoom(hdc, hWnd, hInst);
+            else if(STATE == 2)
+                drawIntoSet(hdc, hWnd, hInst);
             EndPaint(hWnd, &ps);
         }
         break;
