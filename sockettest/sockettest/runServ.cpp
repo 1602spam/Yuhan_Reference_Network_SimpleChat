@@ -16,8 +16,6 @@ bool servRunning;						// 서버 실행 여부를 나타냄
 WCHAR buf[MAX] = {};
 WCHAR buf2[MAX] = {};
 
-WCHAR clntList[MAX] = {};
-
 void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos);	// 각종 메시지 출력
 
 void WSAStartup_error(HWND hWnd, int code);				// WSAStartup() 오류 핸들러
@@ -28,14 +26,16 @@ void termServ(HWND hWnd, HDC hdc);						// 서버 종료
 
 int seekCommand(const wchar_t* str);
 
-void sendToAll(const wchar_t* str);
-
 int getDestSock(const wchar_t* str);
+
+void sendToAll(const wchar_t* str);
 
 void sendToSocket(const wchar_t* str, int j);
 
+void sendClntList(HWND hWnd, HDC hdc, POINT* pos);
+
 /*!
-* @breif		서버의 동작시에 실행되는 스레드
+* @breif		서버 동작 시 실행되는 스레드
 * @details		해당 스레드가 서버의 역할을 하며 수신을 담당한다.
 * @param		LPVOID	param	hWnd값 즉 윈도우 핸들값을 갖고 실행된다.
 * @return		리턴값은 아무 의미를 갖지 않는다.
@@ -43,7 +43,6 @@ void sendToSocket(const wchar_t* str, int j);
 * @bug
 * @warning
 */
-
 DWORD WINAPI runServ(LPVOID Param)
 {
 	HWND hWnd = (HWND)Param;		// 인자인 Param 값을 hWnd로 변경
@@ -58,7 +57,7 @@ DWORD WINAPI runServ(LPVOID Param)
 
 	POINT apos[2] = {
 	{10, 10},
-	{SC_WIDTH - 390, 80}
+	{SC_WIDTH-390, 200}
 	};
 
 	HDC hdc = GetDC(hWnd);			// Device Context 할당
@@ -173,6 +172,7 @@ DWORD WINAPI runServ(LPVOID Param)
 						wsprintf(buf, L"Connected Client: %d", (int)hClntSock[i]);
 						app_print(hWnd, hdc, buf, &apos[0]);
 						// 모든 클라이언트에 전송
+						sendClntList(hWnd, hdc, &apos[1]);
 						sendToAll(buf);
 					}
 				}
@@ -190,7 +190,7 @@ DWORD WINAPI runServ(LPVOID Param)
 						closesocket(set.fd_array[i]);
 						// 종료된 소켓이 있던 fd_set 내 배열 원소를 0으로 초기화
 						FD_CLR(set.fd_array[i], &set);
-
+						sendClntList(hWnd, hdc, &apos[1]);
 						// 접속 종료 메시지 출력
 						app_print(hWnd, hdc, buf, &apos[0]);
 						// 모든 클라이언트에 전송
@@ -338,13 +338,7 @@ void bind_error(HWND hWnd, int code)
 	}
 }
 
-/*!
-* @breif		메시지를 출력합니다.
-* @details		서버 상태와 클라이언트 메시지를 출력합니다.
-* @param		HDC		hdc		윈도우에 대한 핸들값
-* @param		const	WHCAR*	str		출력할 문자열
-* @return		void
-*/
+
 
 int seekCommand(const wchar_t* str)
 {
@@ -392,10 +386,31 @@ void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos)
 	InvalidateRect(hWnd, NULL, 0);
 }
 
+void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos, bool erase)
+{
+	RECT rect = { pos->x, 0, 0, pos->y};
+	TextOut(hdc, pos->x, pos->y, str, lstrlenW(str));
+	pos->y += 20;
+
+	InvalidateRect(hWnd, &rect, erase);
+}
+
 void termServ(HWND hWnd, HDC hdc) {
 	ReleaseDC(hWnd, hdc);
 	closesocket(hServSock);
 	WSACleanup();
 	servRunning = false;
 	ExitThread(0);
+}
+
+void sendClntList(HWND hWnd, HDC hdc, POINT* pos) {
+	WCHAR clntList[MAX] = {};
+	int i;
+	
+	pos->y = 0;
+
+	for (i = 0; i < set.fd_count; i++) {
+		wsprintf(clntList, L"%d", (int)set.fd_array[i]);
+		app_print(hWnd, hdc, clntList, pos, 0);
+	}
 }
