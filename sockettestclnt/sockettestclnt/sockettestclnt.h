@@ -32,10 +32,8 @@ void ScreenFix(LPARAM lParam);
 void ScreenSet(HWND hWnd);
 
 // 화면 구성을 위한 함수
-void drawInit();
 void drawIntoRoom(HDC hdc, HWND hWnd, HINSTANCE hInst);
 void drawRoomList(HDC hdc);
 void drawUserName(HDC hdc, HINSTANCE hInst);
 void drawChatArea(HDC hdc, HWND hWnd, HINSTANCE hInst);
 void drawUserList(HDC hdc);
-void drawExit();

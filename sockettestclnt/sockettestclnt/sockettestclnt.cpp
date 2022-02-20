@@ -204,7 +204,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     {
                         buf[length - 2] = TEXT('\0');
                         SetWindowText((HWND)lParam, TEXT(""));
-                        if(hSocket)
+                        if(hSocket && wcscmp(buf, L"") != 0)
                             send(hSocket, (char*)buf, MAX, 0);
                     }
                 }

@@ -1,7 +1,6 @@
 #include "framework.h"
 #include "sockettest.h"
 
-
 WSADATA wsaData;						// winsock2.h 사용을 위해 초기화
 
 SOCKET hClntSock[MAX], hServSock;		// 클라이언트 소켓 배열, 서버 소켓
@@ -27,6 +26,14 @@ void bind_error(HWND hWnd, int code);					// bind() 오류 핸들러
 
 void termServ(HWND hWnd, HDC hdc);						// 서버 종료
 
+int seekCommand(const wchar_t* str);
+
+void sendToAll(const wchar_t* str);
+
+int getDestSock(const wchar_t* str);
+
+void sendToSocket(const wchar_t* str, int j);
+
 /*!
 * @breif		서버의 동작시에 실행되는 스레드
 * @details		해당 스레드가 서버의 역할을 하며 수신을 담당한다.
@@ -47,7 +54,7 @@ DWORD WINAPI runServ(LPVOID Param)
 	
 	timeval timeout;				// select 함수에서 사용할 타임아웃
 	
-	int i, j;						// 함수 반환값 및 반복문 처리할 임시 변수
+	int i, j;					// 함수 반환값 및 반복문 처리할 임시 변수
 
 	POINT apos[2] = {
 	{10, 10},
@@ -163,11 +170,10 @@ DWORD WINAPI runServ(LPVOID Param)
 
 					// 연결에 성공했다면 연결 성공 메시지 출력
 					if (hClntSock[i] != -1) {
-						wsprintf(buf, L"Connected Client: %d", hClntSock[i]);
+						wsprintf(buf, L"Connected Client: %d", (int)hClntSock[i]);
 						app_print(hWnd, hdc, buf, &apos[0]);
 						// 모든 클라이언트에 전송
-						for (j = 0; j < set.fd_count; j++)
-							send(set.fd_array[j], (char*)buf, MAX, 0);
+						sendToAll(buf);
 					}
 				}
 				// 해당 소켓이 서버 소켓이 아닌 경우
@@ -179,7 +185,7 @@ DWORD WINAPI runServ(LPVOID Param)
 					if (chk_conn <= 0)
 					{
 						// 접속 종료 메시지 설정
-						wsprintf(buf, L"Disconnected Client: %d", set.fd_array[i]);
+						wsprintf(buf, L"Disconnected Client: %d", (int)set.fd_array[i]);
 						// 해당 소켓을 set에서 찾아 닫아줌
 						closesocket(set.fd_array[i]);
 						// 종료된 소켓이 있던 fd_set 내 배열 원소를 0으로 초기화
@@ -188,22 +194,50 @@ DWORD WINAPI runServ(LPVOID Param)
 						// 접속 종료 메시지 출력
 						app_print(hWnd, hdc, buf, &apos[0]);
 						// 모든 클라이언트에 전송
-						for (j = 0; j < set.fd_count; j++)
-							send(set.fd_array[j], (char*)buf, MAX, 0);
+						sendToAll(buf);
 					}
 					// recv 함수가 정상 작동한 경우(반환값 1인 경우)
 					else
 					{
-						// buf2에는 해당 소켓 번호를 저장
-						wsprintf(buf2, L"%d         : ", set.fd_array[i]);
-						// buf2 뒤에 recv한 메시지가 저장되어 있는 buf를 붙임
-						wcscat(buf2, buf);
-						// buf2를 출력
-						// 846		: hello 와 같은 형태로 출력
-						app_print(hWnd, hdc, buf2, &apos[0]);
-						// 모든 클라이언트에 전송
-						for (j = 0; j < set.fd_count; j++)
-							send(set.fd_array[j], (char*)buf2, MAX, 0);
+						// 메시지가 /w 커맨드로 시작하는 경우
+						if (seekCommand(buf) == 1) {
+							// 커맨드의 수신자를 분리해 반환
+							j = getDestSock(buf);
+							if (0 <= j) {
+								wsprintf(buf2, L"(DM) %d ▶ %d    : ", (int)set.fd_array[i], (int)set.fd_array[j]);
+								wcscat(buf2, buf);
+								app_print(hWnd, hdc, buf2, &apos[0]);
+								sendToSocket(buf2, i);
+								wsprintf(buf2, L"(DM) %d ◀ %d    : ", (int)set.fd_array[j], (int)set.fd_array[i]);
+								wcscat(buf2, buf);
+								sendToSocket(buf2, j);
+							}
+							else if (j == i) {
+								wsprintf(buf2, L"You can't DM yourself!");
+								wcscat(buf2, buf);
+								app_print(hWnd, hdc, buf2, &apos[0]);
+								sendToSocket(buf2, i);
+							}
+							else
+							{
+								wsprintf(buf2, L"(DM) %d ▶ ERROR    : ", (int)set.fd_array[i]);
+								wcscat(buf2, buf);
+								app_print(hWnd, hdc, buf2, &apos[0]);
+								sendToSocket(buf2, i);
+							}
+						}
+						else
+						{
+							// buf2에는 해당 소켓 번호를 저장
+							wsprintf(buf2, L"%d         : ", (int)set.fd_array[i]);
+							// buf2 뒤에 recv한 메시지가 저장되어 있는 buf를 붙임
+							wcscat(buf2, buf);
+							// buf2를 출력
+							// 846		: hello 와 같은 형태로 출력
+							app_print(hWnd, hdc, buf2, &apos[0]);
+							// 모든 클라이언트에 전송
+							sendToAll(buf2);
+						}
 					}
 				}
 			}
@@ -311,6 +345,44 @@ void bind_error(HWND hWnd, int code)
 * @param		const	WHCAR*	str		출력할 문자열
 * @return		void
 */
+
+int seekCommand(const wchar_t* str)
+{
+	if (wcsncmp(str, L"/w", 2) == 0 && 3 < lstrlenW(str)) // /w로 시작하는 메시지일 경우 귓속말 처리를 위해 1 반환
+			return 1;
+	return 0;	// 해당하는 커맨드가 없을 경우 0을 반환
+}
+
+void sendToAll(const wchar_t* str) {
+	wchar_t cpstr[MAX] = {};
+	int i;
+	wcscpy(cpstr, str);
+	for (i = 0; i < set.fd_count; i++)
+		send(set.fd_array[i], (char*)cpstr, MAX, 0);
+}
+
+int getDestSock(const wchar_t* str) {
+	wchar_t cpstr[MAX] = {};
+	wchar_t* pt;
+	int i;
+	wcscpy(cpstr, str);
+
+	// 명령어가 /w 123 hello world일 때
+	// wide character 배열에서 공백 문자 " "이 발생하는 위치를 포인터로 반환
+	pt = wcstok(cpstr, L" ");
+	// 그 다음 공백 문자 " "이 발생하는 위치를 포인터로 반환
+	pt = wcstok(NULL, L" ");
+
+	// fd_set에 수신자 소켓이 있는지 확인
+	for (i = 0; i < set.fd_count; i++)
+		if (set.fd_array[i] == _wtoi(pt))
+			return i;
+	return -1;
+}
+
+void sendToSocket(const wchar_t* str, int i) {
+	send(set.fd_array[i], (char*)str, MAX, 0);
+}
 
 void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos)
 {
