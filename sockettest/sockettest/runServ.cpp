@@ -32,6 +32,8 @@ void sendToAll(const wchar_t* str);
 
 void sendToSocket(const wchar_t* str, int j);
 
+void cmdHelp(int i);
+
 /*!
 * @breif		서버 동작 시 실행되는 스레드
 * @details		해당 스레드가 서버의 역할을 하며 수신을 담당한다.
@@ -196,19 +198,32 @@ DWORD WINAPI runServ(LPVOID Param)
 					else
 					{
 						k = seekCommand(buf);
-						// 메시지가 /w 커맨드로 시작하지 않으면 모든 클라이언트에 전송
-						if (k == 0) {
-							// buf2에는 해당 소켓 번호를 저장
-							wsprintf(buf2, L"%d         : ", (int)set.fd_array[i]);
-							// buf2 뒤에 recv한 메시지가 저장되어 있는 buf를 붙임
+						switch(k) {
+						
+						case -1:// /w 명령어 형식이 완전하지 않으면 도움말 명령어 반환
+						{
+							wsprintf(buf2, L"[COMMAND] %d         : ", (int)set.fd_array[i]);
 							wcscat(buf2, buf);
-							// buf2를 출력
-							// 846		: hello 와 같은 형태로 출력
 							app_print(hWnd, hdc, buf2, &apos[0]);
-							sendToAll(buf2);
+
+							wsprintf(buf2, L"[ERROR] Command is not completed, /help for more info!");
+							app_print(hWnd, hdc, buf2, &apos[0]);
+							sendToSocket(buf2, i);
 						}
+							break;
+						case 0: // 메시지가 커맨드로 시작하지 않으면 모든 클라이언트에 전송
+							{
+								// buf2에는 해당 소켓 번호를 저장
+								wsprintf(buf2, L"%d         : ", (int)set.fd_array[i]);
+								// buf2 뒤에 recv한 메시지가 저장되어 있는 buf를 붙임
+								wcscat(buf2, buf);
+								// buf2를 출력
+								// 846		: hello 와 같은 형태로 출력
+								app_print(hWnd, hdc, buf2, &apos[0]);
+								sendToAll(buf2);
+							} break;
 						// 메시지가 /w 커맨드로 시작한다면 
-						else if (k == 1) {
+						case 1: {
 							wsprintf(buf2, L"[COMMAND] %d         : ", (int)set.fd_array[i]);
 							wcscat(buf2, buf);
 							app_print(hWnd, hdc, buf2, &apos[0]);
@@ -237,6 +252,20 @@ DWORD WINAPI runServ(LPVOID Param)
 								app_print(hWnd, hdc, buf2, &apos[0]);
 								sendToSocket(buf2, i);
 							}
+						}
+							break;
+						case 2:
+						{
+							wsprintf(buf2, L"[COMMAND] %d         : ", (int)set.fd_array[i]);
+							wcscat(buf2, buf);
+							app_print(hWnd, hdc, buf2, &apos[0]);
+							cmdHelp(i);
+						}
+							break;
+						default:
+						{
+						}
+						break;
 						}
 					}
 				}
@@ -340,8 +369,20 @@ void bind_error(HWND hWnd, int code)
 
 int seekCommand(const wchar_t* str)
 {
-	if (wcsncmp(str, L"/w", 2) == 0 && 3 < lstrlenW(str)) // /w로 시작하는 메시지일 경우 귓속말 처리를 위해 1 반환
-			return 1;
+	int strlen = 0;
+
+	strlen = lstrlenW(str);
+
+	if ((2 == strlen && wcsncmp(str, L"/w", strlen) == 0) ||
+		(3 == strlen && wcsncmp(str, L"/w ", strlen) == 0) ||
+		(4 <= strlen && wcsncmp(str, L"/w  ", 4) == 0)) // /w 명령어 형식이 불완전한 경우 -1 반환
+		return -1;
+	else if (wcsncmp(str, L"/w", 2) == 0 && 3 < strlen) // /w로 시작하는 메시지일 경우 귓속말 처리를 위해 1 반환
+		return 1;
+
+	if (wcsncmp(str, L"/help", 5) == 0) // /help 입력 시 도움말 처리를 위해 2 반환
+		return 2;
+
 	return 0;	// 해당하는 커맨드가 없을 경우 0을 반환
 }
 
@@ -368,7 +409,7 @@ int getDestSock(wchar_t* str) {
 	}
 
 	wcscpy(str, &cpstr[i+1]);
-
+	
 	// 명령어가 /w 123 hello world일 때
 	// wide character 배열에서 공백 문자 " " 이전 위치를 반환
 	pt1 = wcstok(cpstr, L" ");
@@ -381,6 +422,16 @@ int getDestSock(wchar_t* str) {
 			return i;
 
 	return -1;
+}
+
+void cmdHelp(int i) {
+	vector <const WCHAR*> help;
+	help.push_back(L"[COMMAND]");
+	help.push_back(L"/help - Display all commands.");
+	help.push_back(L"/w [Username] [Message] - Send DM to specific user.");
+
+	for(const auto &j : help)
+		sendToSocket(j, i);
 }
 
 void sendToSocket(const wchar_t* str, int i) {

@@ -16,3 +16,6 @@
 #include <memory.h>
 #include <tchar.h>
 #include <WinSock2.h>						//window 환경에서 소켓 프로그래밍 관련 기능을 제공
+#include <vector>
+
+using namespace std;
