@@ -32,8 +32,6 @@ void sendToAll(const wchar_t* str);
 
 void sendToSocket(const wchar_t* str, int j);
 
-void sendClntList(HWND hWnd, HDC hdc, POINT* pos);
-
 /*!
 * @breif		서버 동작 시 실행되는 스레드
 * @details		해당 스레드가 서버의 역할을 하며 수신을 담당한다.
@@ -56,8 +54,8 @@ DWORD WINAPI runServ(LPVOID Param)
 	int i, j;					// 함수 반환값 및 반복문 처리할 임시 변수
 
 	POINT apos[2] = {
-	{10, 10},
-	{SC_WIDTH-390, 200}
+	{10, 10},		//Chat log area
+	{800, 10}		//Clnt list area
 	};
 
 	HDC hdc = GetDC(hWnd);			// Device Context 할당
@@ -172,7 +170,6 @@ DWORD WINAPI runServ(LPVOID Param)
 						wsprintf(buf, L"Connected Client: %d", (int)hClntSock[i]);
 						app_print(hWnd, hdc, buf, &apos[0]);
 						// 모든 클라이언트에 전송
-						sendClntList(hWnd, hdc, &apos[1]);
 						sendToAll(buf);
 					}
 				}
@@ -190,7 +187,6 @@ DWORD WINAPI runServ(LPVOID Param)
 						closesocket(set.fd_array[i]);
 						// 종료된 소켓이 있던 fd_set 내 배열 원소를 0으로 초기화
 						FD_CLR(set.fd_array[i], &set);
-						sendClntList(hWnd, hdc, &apos[1]);
 						// 접속 종료 메시지 출력
 						app_print(hWnd, hdc, buf, &apos[0]);
 						// 모든 클라이언트에 전송
@@ -348,8 +344,6 @@ void bind_error(HWND hWnd, int code)
 	}
 }
 
-
-
 int seekCommand(const wchar_t* str)
 {
 	if (wcsncmp(str, L"/w", 2) == 0 && 3 < lstrlenW(str)) // /w로 시작하는 메시지일 경우 귓속말 처리를 위해 1 반환
@@ -407,31 +401,10 @@ void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos)
 	InvalidateRect(hWnd, NULL, 0);
 }
 
-void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos, bool erase)
-{
-	RECT rect = { pos->x, 0, 0, pos->y};
-	TextOut(hdc, pos->x, pos->y, str, lstrlenW(str));
-	pos->y += 20;
-
-	InvalidateRect(hWnd, &rect, erase);
-}
-
 void termServ(HWND hWnd, HDC hdc) {
 	ReleaseDC(hWnd, hdc);
 	closesocket(hServSock);
 	WSACleanup();
 	servRunning = false;
 	ExitThread(0);
-}
-
-void sendClntList(HWND hWnd, HDC hdc, POINT* pos) {
-	WCHAR clntList[MAX] = {};
-	int i;
-	
-	pos->y = 0;
-
-	for (i = 0; i < set.fd_count; i++) {
-		wsprintf(clntList, L"%d", (int)set.fd_array[i]);
-		app_print(hWnd, hdc, clntList, pos, 0);
-	}
 }
