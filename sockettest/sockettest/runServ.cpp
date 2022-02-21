@@ -51,7 +51,7 @@ DWORD WINAPI runServ(LPVOID Param)
 	
 	timeval timeout;				// select 함수에서 사용할 타임아웃
 	
-	int i, j;					// 함수 반환값 및 반복문 처리할 임시 변수
+	int i, j, k;					// 함수 반환값 및 반복문 처리할 임시 변수
 
 	POINT apos[2] = {
 	{10, 10},		//Chat log area
@@ -195,29 +195,28 @@ DWORD WINAPI runServ(LPVOID Param)
 					// recv 함수가 정상 작동한 경우(반환값 1인 경우)
 					else
 					{
-						// buf2에는 해당 소켓 번호를 저장
-						wsprintf(buf2, L"%d         : ", (int)set.fd_array[i]);
-						// buf2 뒤에 recv한 메시지가 저장되어 있는 buf를 붙임
-						wcscat(buf2, buf);
-						// buf2를 출력
-						// 846		: hello 와 같은 형태로 출력
-						app_print(hWnd, hdc, buf2, &apos[0]);
+						k = seekCommand(buf);
 						// 메시지가 /w 커맨드로 시작하지 않으면 모든 클라이언트에 전송
-						if (seekCommand(buf) == 0) {
+						if (k == 0) {
+							// buf2에는 해당 소켓 번호를 저장
+							wsprintf(buf2, L"%d         : ", (int)set.fd_array[i]);
+							// buf2 뒤에 recv한 메시지가 저장되어 있는 buf를 붙임
+							wcscat(buf2, buf);
+							// buf2를 출력
+							// 846		: hello 와 같은 형태로 출력
+							app_print(hWnd, hdc, buf2, &apos[0]);
 							sendToAll(buf2);
 						}
 						// 메시지가 /w 커맨드로 시작한다면 
-						else if (seekCommand(buf) == 1) {
+						else if (k == 1) {
+							wsprintf(buf2, L"[COMMAND] %d         : ", (int)set.fd_array[i]);
+							wcscat(buf2, buf);
+							app_print(hWnd, hdc, buf2, &apos[0]);
 							// 커맨드의 수신자를 분리해 반환
 							j = getDestSock(buf);
 							if (0 <= j) {
 								if (set.fd_array[j] == set.fd_array[i]) {
 									wsprintf(buf2, L"[ERROR] You can't DM yourself!");
-									app_print(hWnd, hdc, buf2, &apos[0]);
-									sendToSocket(buf2, i);
-
-									wsprintf(buf2, L"[ERROR] %d        : ", (int)set.fd_array[i]);
-									wcscat(buf2, buf);
 									app_print(hWnd, hdc, buf2, &apos[0]);
 									sendToSocket(buf2, i);
 								}
@@ -235,11 +234,6 @@ DWORD WINAPI runServ(LPVOID Param)
 							else
 							{
 								wsprintf(buf2, L"[ERROR] Could't find username!");
-								app_print(hWnd, hdc, buf2, &apos[0]);
-								sendToSocket(buf2, i);
-
-								wsprintf(buf2, L"[ERROR] %d        : ", (int)set.fd_array[i]);
-								wcscat(buf2, buf);
 								app_print(hWnd, hdc, buf2, &apos[0]);
 								sendToSocket(buf2, i);
 							}
