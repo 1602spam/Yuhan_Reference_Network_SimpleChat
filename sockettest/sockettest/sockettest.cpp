@@ -13,6 +13,11 @@ WCHAR szWindowClass[MAX_LOADSTRING];		// 기본 창 클래스 이름입니다.
 extern bool servRunning;					// 서버 실행 여부를 나타냅니다.
 extern SOCKET hServSock;					// 서버 소켓 구조체
 
+extern POINT apos[];
+
+extern vector <const WCHAR*> clntList;
+extern int cntClnt;
+
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -220,8 +225,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			PAINTSTRUCT ps;
 			HDC hdc = BeginPaint(hWnd, &ps);
-			int i;
+			RECT rect = { apos[1].x-20, 0, SC_WIDTH, SC_HEIGHT};
 			// TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
+			Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
+			drawClntList(hWnd, hdc, &apos[1]);
 			EndPaint(hWnd, &ps);
 		}
 		break;
@@ -254,4 +261,20 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 	return (INT_PTR)FALSE;
+}
+
+void drawClntList(HWND hWnd, HDC hdc, POINT* pos) {
+	POINT pt;
+	pt = *pos;
+	WCHAR str[MAX];
+
+	wsprintf(str, L"Clients on connection: %d", cntClnt);
+
+	TextOut(hdc, pt.x, pt.y, str, lstrlenW(str));
+
+	for (const auto& i : clntList)
+	{
+		pt.y += 20;
+		TextOut(hdc, pt.x, pt.y, i, lstrlenW(i));
+	}
 }

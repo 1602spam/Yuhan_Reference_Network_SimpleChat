@@ -13,8 +13,17 @@ int fd_num, chk_conn;					// 각각 select와 recv 함수 반환값 저장
 
 bool servRunning;						// 서버 실행 여부를 나타냄
 
-WCHAR buf[MAX] = {};
-WCHAR buf2[MAX] = {};
+WCHAR buf[MAX] = {};					//
+WCHAR buf2[MAX] = {};					//runServ 스레드에서 사용
+WCHAR buf3[MAX] = {};
+
+POINT apos[] = {
+{10, 10},		//Chat log area
+{800, 10}		//Clnt list area
+};
+
+vector <const WCHAR*> clntList;
+int cntClnt = 0;
 
 void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos);	// 각종 메시지 출력
 
@@ -33,6 +42,8 @@ void sendToAll(const wchar_t* str);
 void sendToSocket(const wchar_t* str, int j);
 
 void cmdHelp(int i);
+
+void aposClear();
 
 /*!
 * @breif		서버 동작 시 실행되는 스레드
@@ -55,15 +66,12 @@ DWORD WINAPI runServ(LPVOID Param)
 	
 	int i, j, k;					// 함수 반환값 및 반복문 처리할 임시 변수
 
-	POINT apos[2] = {
-	{10, 10},		//Chat log area
-	{800, 10}		//Clnt list area
-	};
-
 	HDC hdc = GetDC(hWnd);			// Device Context 할당
 	
 	SetBkMode(hdc, TRANSPARENT);	// 그리기 영역 바탕을 투명하게 설정
 	InvalidateRect(hWnd, NULL, TRUE);
+
+	aposClear();
 
 	// 소켓 프로그램 시작부
 	// DLL 초기화 및 애플리케이션 요구사항 충족 확인
@@ -150,7 +158,7 @@ DWORD WINAPI runServ(LPVOID Param)
 			continue;
 
 		// set의 file descriptor 개수만큼 반복
-		for (i = 0; i < set.fd_count; i++)
+		for (i = 0; i < (int)set.fd_count; i++)
 		{
 			// 해당 소켓에서 변화가 발생했는지 판단
 			if (FD_ISSET(set.fd_array[i], &cpset))
@@ -167,6 +175,11 @@ DWORD WINAPI runServ(LPVOID Param)
 					if (set.fd_count < i)
 						set.fd_count = i;
 
+					WCHAR* arr = new WCHAR[MAX]();
+					wsprintf(arr, L"%d", (int)hClntSock[i]);
+					clntList.push_back(arr);
+					cntClnt++;
+					
 					// 연결에 성공했다면 연결 성공 메시지 출력
 					if (hClntSock[i] != -1) {
 						wsprintf(buf, L"Connected Client: %d", (int)hClntSock[i]);
@@ -183,6 +196,19 @@ DWORD WINAPI runServ(LPVOID Param)
 					// 리턴 값이 0이면 정상 종료, 1이면 비정상 종료임을 나타냄
 					if (chk_conn <= 0)
 					{
+						wsprintf(buf3, L"%d", (int)hClntSock[i]);
+						for (k = 0; k < clntList.size(); k++)
+						{
+							if (wcscmp(clntList[k], buf3) == 0)
+							{
+								const WCHAR* tmp2 = NULL;
+								tmp2 = clntList[k];
+								//clntList.erase(*(clntList.front()+k));
+								delete tmp2;
+								cntClnt--;
+								break;
+							}
+						}
 						// 접속 종료 메시지 설정
 						wsprintf(buf, L"Disconnected Client: %d", (int)set.fd_array[i]);
 						// 해당 소켓을 set에서 찾아 닫아줌
@@ -373,9 +399,10 @@ int seekCommand(const wchar_t* str)
 
 	strlen = lstrlenW(str);
 
-	if ((2 == strlen && wcsncmp(str, L"/w", strlen) == 0) ||
+	if ((1 == strlen && wcsncmp(str, L"/", strlen) == 0) ||
+		(2 == strlen && wcsncmp(str, L"/w", strlen) == 0) ||
 		(3 == strlen && wcsncmp(str, L"/w ", strlen) == 0) ||
-		(4 <= strlen && wcsncmp(str, L"/w  ", 4) == 0)) // /w 명령어 형식이 불완전한 경우 -1 반환
+		(4 <= strlen && wcsncmp(str, L"/w  ", 4) == 0)) // 명령어 형식이 불완전한 경우 -1 반환
 		return -1;
 	else if (wcsncmp(str, L"/w", 2) == 0 && 3 < strlen) // /w로 시작하는 메시지일 경우 귓속말 처리를 위해 1 반환
 		return 1;
@@ -387,11 +414,9 @@ int seekCommand(const wchar_t* str)
 }
 
 void sendToAll(const wchar_t* str) {
-	wchar_t cpstr[MAX] = {};
 	int i;
-	wcscpy(cpstr, str);
 	for (i = 0; i < set.fd_count; i++)
-		send(set.fd_array[i], (char*)cpstr, MAX, 0);
+		send(set.fd_array[i], (char*)str, MAX, 0);
 }
 
 int getDestSock(wchar_t* str) {
@@ -426,11 +451,11 @@ int getDestSock(wchar_t* str) {
 
 void cmdHelp(int i) {
 	vector <const WCHAR*> help;
-	help.push_back(L"[COMMAND]");
+	help.push_back(L" 〓〓〓[COMMAND]〓〓〓");
 	help.push_back(L"/help - Display all commands.");
 	help.push_back(L"/w [Username] [Message] - Send DM to specific user.");
-
-	for(const auto &j : help)
+	help.push_back(L" 〓〓〓〓〓〓〓〓〓〓〓");
+	for(const auto & j : help)
 		sendToSocket(j, i);
 }
 
@@ -446,10 +471,17 @@ void app_print(HWND hWnd, HDC hdc, const wchar_t* str, POINT* pos)
 	InvalidateRect(hWnd, NULL, 0);
 }
 
+void aposClear() {
+	apos[0] = { 10, 10 };		//Chat log area
+	apos[1] = { 800, 10 };		//Clnt list area
+}
+
 void termServ(HWND hWnd, HDC hdc) {
 	ReleaseDC(hWnd, hdc);
 	closesocket(hServSock);
 	WSACleanup();
 	servRunning = false;
+	clntList.clear();
+	cntClnt = 0;
 	ExitThread(0);
 }

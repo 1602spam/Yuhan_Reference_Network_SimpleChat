@@ -20,3 +20,5 @@
 * @warning		
 */
 DWORD WINAPI runServ(LPVOID Param);
+
+void drawClntList(HWND hWnd, HDC hdc, POINT* pos);
