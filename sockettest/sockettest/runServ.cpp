@@ -1,5 +1,8 @@
+#pragma once
 #include "framework.h"
 #include "sockettest.h"
+
+using namespace std;
 
 WSADATA wsaData;						// winsock2.h 사용을 위해 초기화
 
@@ -158,9 +161,11 @@ DWORD WINAPI runServ(LPVOID Param)
 			continue;
 
 		// set의 file descriptor 개수만큼 반복
+		// 소켓의 변화 상태를 순회하며 확인
 		for (i = 0; i < (int)set.fd_count; i++)
 		{
 			// 해당 소켓에서 변화가 발생했는지 판단
+			// 소켓의 상태변화를 감지한다면
 			if (FD_ISSET(set.fd_array[i], &cpset))
 			{
 				// 해당 소켓이 서버 소켓이라면 신규 연결 신호가 온 것
@@ -189,6 +194,7 @@ DWORD WINAPI runServ(LPVOID Param)
 					}
 				}
 				// 해당 소켓이 서버 소켓이 아닌 경우
+				// 소켓의 연결 상태를 확인 후 종료 처리를 진행
 				else
 				{
 					// 연결 확인을 위한 recv 함수 반환
@@ -196,14 +202,22 @@ DWORD WINAPI runServ(LPVOID Param)
 					// 리턴 값이 0이면 정상 종료, 1이면 비정상 종료임을 나타냄
 					if (chk_conn <= 0)
 					{
+						WCHAR * wchar_tmp = NULL;
+						// "Connected Client: " 18글짜
+						// buf3 에 위의 쓸모 없는 문자열이 추가 되는 버그가 있음
+						// 심시방편으로 다음 문자열 다음 글자부터 읽어오도록 변경하였음
+						memset(buf3, 0, sizeof(buf3));
 						wsprintf(buf3, L"%d", (int)hClntSock[i]);
+						wchar_tmp = &buf[18];
+						//MessageBox(hWnd, &buf[18], L"buf3", MB_OK);
 						for (k = 0; k < clntList.size(); k++)
 						{
-							if (wcscmp(clntList[k], buf3) == 0)
+							//MessageBox(hWnd, clntList[k], L"cln", MB_OK);
+							if (wcscmp(clntList[k], wchar_tmp) == 0)
 							{
 								const WCHAR* tmp2 = NULL;
 								tmp2 = clntList[k];
-								//clntList.erase(*(clntList.front()+k));
+								clntList.erase(clntList.begin()+k);
 								delete tmp2;
 								cntClnt--;
 								break;
