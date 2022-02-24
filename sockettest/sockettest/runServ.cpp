@@ -184,6 +184,7 @@ DWORD WINAPI runServ(LPVOID Param)
 					wsprintf(arr, L"%d", (int)hClntSock[i]);
 					clntList.push_back(arr);
 					cntClnt++;
+					delete[] arr;
 					
 					// 연결에 성공했다면 연결 성공 메시지 출력
 					if (hClntSock[i] != -1) {
@@ -202,18 +203,10 @@ DWORD WINAPI runServ(LPVOID Param)
 					// 리턴 값이 0이면 정상 종료, 1이면 비정상 종료임을 나타냄
 					if (chk_conn <= 0)
 					{
-						WCHAR * wchar_tmp = NULL;
-						// "Connected Client: " 18글짜
-						// buf3 에 위의 쓸모 없는 문자열이 추가 되는 버그가 있음
-						// 심시방편으로 다음 문자열 다음 글자부터 읽어오도록 변경하였음
-						memset(buf3, 0, sizeof(buf3));
-						wsprintf(buf3, L"%d", (int)hClntSock[i]);
-						wchar_tmp = &buf[18];
-						//MessageBox(hWnd, &buf[18], L"buf3", MB_OK);
+						wsprintf(buf3, L"%d", (int)set.fd_array[i]);
 						for (k = 0; k < clntList.size(); k++)
 						{
-							//MessageBox(hWnd, clntList[k], L"cln", MB_OK);
-							if (wcscmp(clntList[k], wchar_tmp) == 0)
+							if (wcscmp(clntList[k], buf3) == 0)
 							{
 								const WCHAR* tmp2 = NULL;
 								tmp2 = clntList[k];
